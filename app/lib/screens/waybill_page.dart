@@ -299,24 +299,15 @@ class _WaybillPageState extends State<WaybillPage> {
               decoration: appInput(label: '快递公司', hint: '自动识别，可修改'),
             ),
             const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _tailCtrl,
-                    keyboardType: TextInputType.number,
-                    decoration: appInput(label: '收件人尾号', hint: '后四位'),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  flex: 2,
-                  child: TextField(
-                    controller: _addressCtrl,
-                    decoration: appInput(label: '地址线索', hint: '省市区关键词'),
-                  ),
-                ),
-              ],
+            TextField(
+              controller: _tailCtrl,
+              keyboardType: TextInputType.number,
+              decoration: appInput(label: '收件人尾号', hint: '手机号后四位'),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _addressCtrl,
+              decoration: appInput(label: '地址线索', hint: '省市区关键词'),
             ),
           ],
         ),

@@ -298,6 +298,7 @@ class _ScanPageState extends State<ScanPage> {
                   label: const Text('手输单号'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
                     side: const BorderSide(color: Color(0xFF374151)),
                     minimumSize: const Size(0, 46),
                     shape: RoundedRectangleBorder(

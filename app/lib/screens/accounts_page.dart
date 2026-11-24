@@ -21,7 +21,7 @@ const _palette = <int>[
   0xFF64748B,
 ];
 
-/// 账号台账：平台筛选、账号检索、新增平台与账号。
+/// 账号台账：平台筛选、账号检索、新增/编辑平台与账号。
 class AccountsPage extends StatefulWidget {
   const AccountsPage({super.key});
 
@@ -31,6 +31,11 @@ class AccountsPage extends StatefulWidget {
 
 class _AccountsPageState extends State<AccountsPage> {
   final TextEditingController _searchCtrl = TextEditingController();
+  final TextEditingController _aliasCtrl = TextEditingController();
+  final TextEditingController _ownerCtrl = TextEditingController();
+  final TextEditingController _noteCtrl = TextEditingController();
+  final TextEditingController _platformNameCtrl = TextEditingController();
+
   List<ShopPlatform> _platforms = const [];
   List<AccountView> _accounts = const [];
   String? _platformId;
@@ -47,6 +52,10 @@ class _AccountsPageState extends State<AccountsPage> {
   void dispose() {
     dbRevision.removeListener(_load);
     _searchCtrl.dispose();
+    _aliasCtrl.dispose();
+    _ownerCtrl.dispose();
+    _noteCtrl.dispose();
+    _platformNameCtrl.dispose();
     super.dispose();
   }
 
@@ -66,28 +75,37 @@ class _AccountsPageState extends State<AccountsPage> {
     });
   }
 
-  /// 新增账号弹窗。
-  Future<void> _addAccount() async {
+  /// 添加或编辑账号弹窗。
+  ///
+  /// 参数：[editing] 传入时为编辑模式，否则为新增模式。
+  Future<void> _openAccountDialog({AccountView? editing}) async {
     if (_platforms.isEmpty) {
       showToast(context, '请先添加一个平台');
       return;
     }
-    final aliasCtrl = TextEditingController();
-    final ownerCtrl = TextEditingController();
-    final noteCtrl = TextEditingController();
-    var platformId = _platformId ?? _platforms.first.id;
+    final isEdit = editing != null;
+    _aliasCtrl.text = editing?.account.alias ?? '';
+    _ownerCtrl.text = editing?.account.owner ?? '';
+    _noteCtrl.text = editing?.account.note ?? '';
+    var platformId = editing?.account.platformId ??
+        _platformId ??
+        _platforms.first.id;
+    var status = editing?.account.status ?? 'active';
     var showError = false;
+    var saving = false;
 
     final saved = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) {
           final platformName = _platforms
-              .firstWhere((p) => p.id == platformId,
-                  orElse: () => _platforms.first)
+              .firstWhere(
+                (p) => p.id == platformId,
+                orElse: () => _platforms.first,
+              )
               .name;
           return AlertDialog(
-            title: const Text('添加账号'),
+            title: Text(isEdit ? '编辑账号' : '添加账号'),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -110,14 +128,16 @@ class _AccountsPageState extends State<AccountsPage> {
                           borderRadius: BorderRadius.all(Radius.circular(12)),
                         ),
                       )
-                      .gestures(onTap: () async {
-                        final picked = await _pickPlatform(ctx);
-                        if (picked != null) {
-                          setDialogState(() => platformId = picked);
-                        }
-                      }),
+                      .gestures(onTap: saving
+                          ? null
+                          : () async {
+                              final picked = await _pickPlatform(ctx);
+                              if (picked != null) {
+                                setDialogState(() => platformId = picked);
+                              }
+                            }),
                   TextField(
-                    controller: aliasCtrl,
+                    controller: _aliasCtrl,
                     decoration: appInput(
                       label: '账号别名',
                       hint: '如 小王-淘宝1号',
@@ -134,30 +154,80 @@ class _AccountsPageState extends State<AccountsPage> {
                           .textColor(AppColors.danger),
                     ).padding(top: 4),
                   TextField(
-                    controller: ownerCtrl,
+                    controller: _ownerCtrl,
                     decoration: appInput(label: '归属员工', hint: '可留空'),
                   ).padding(top: 10),
                   TextField(
-                    controller: noteCtrl,
+                    controller: _noteCtrl,
                     decoration: appInput(label: '备注', hint: '手机号尾号等线索'),
                   ).padding(top: 10),
+                  Row(
+                    children: [
+                      const Text('账号状态')
+                          .fontSize(14)
+                          .textColor(AppColors.ink2),
+                      const Spacer(),
+                      Text(status == 'active' ? '正常' : '停用')
+                          .fontSize(13)
+                          .fontWeight(FontWeight.w600)
+                          .textColor(status == 'active'
+                              ? AppColors.brandDeep
+                              : AppColors.ink3)
+                          .padding(right: 8),
+                      Switch(
+                        value: status == 'active',
+                        onChanged: saving
+                            ? null
+                            : (v) => setDialogState(
+                                  () => status = v ? 'active' : 'disabled',
+                                ),
+                      ),
+                    ],
+                  ).padding(top: 4),
                 ],
               ),
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
+                onPressed: saving ? null : () => Navigator.pop(ctx, false),
                 child: const Text('取消'),
               ),
               FilledButton(
-                onPressed: () {
-                  if (aliasCtrl.text.trim().isEmpty) {
-                    setDialogState(() => showError = true);
-                    return;
-                  }
-                  Navigator.pop(ctx, true);
-                },
-                child: const Text('保存'),
+                onPressed: saving
+                    ? null
+                    : () async {
+                        if (_aliasCtrl.text.trim().isEmpty) {
+                          setDialogState(() => showError = true);
+                          return;
+                        }
+                        setDialogState(() => saving = true);
+                        try {
+                          if (isEdit) {
+                            await AppDatabase.instance.updateAccount(
+                              id: editing.account.id,
+                              platformId: platformId,
+                              alias: _aliasCtrl.text,
+                              owner: _ownerCtrl.text,
+                              note: _noteCtrl.text,
+                              status: status,
+                            );
+                          } else {
+                            await AppDatabase.instance.addAccount(
+                              platformId: platformId,
+                              alias: _aliasCtrl.text,
+                              owner: _ownerCtrl.text,
+                              note: _noteCtrl.text,
+                            );
+                          }
+                          if (ctx.mounted) Navigator.pop(ctx, true);
+                        } catch (_) {
+                          if (ctx.mounted) {
+                            setDialogState(() => saving = false);
+                            showToast(ctx, '保存失败，请重试');
+                          }
+                        }
+                      },
+                child: Text(isEdit ? '保存修改' : '保存'),
               ),
             ],
           );
@@ -166,19 +236,10 @@ class _AccountsPageState extends State<AccountsPage> {
     );
 
     if (saved == true) {
-      await AppDatabase.instance.addAccount(
-        platformId: platformId,
-        alias: aliasCtrl.text,
-        owner: ownerCtrl.text,
-        note: noteCtrl.text,
-      );
       if (!mounted) return;
       bumpDbRevision();
-      showToast(context, '账号已添加');
+      showToast(context, isEdit ? '账号已更新' : '账号已添加');
     }
-    aliasCtrl.dispose();
-    ownerCtrl.dispose();
-    noteCtrl.dispose();
   }
 
   /// 平台选择底部弹层。
@@ -224,35 +285,74 @@ class _AccountsPageState extends State<AccountsPage> {
     );
   }
 
-  /// 新增平台弹窗。
+  /// 新增平台弹窗（含重名与空值校验）。
   Future<void> _addPlatform() async {
-    final nameCtrl = TextEditingController();
+    _platformNameCtrl.clear();
+    var error = '';
+
     final saved = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('新增平台'),
-        content: TextField(
-          controller: nameCtrl,
-          autofocus: true,
-          decoration: appInput(hint: '如 天猫、得物、闲鱼'),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('保存'),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('新增平台'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _platformNameCtrl,
+                autofocus: true,
+                decoration: appInput(hint: '如 天猫、得物、闲鱼'),
+                onChanged: (_) {
+                  if (error.isNotEmpty) setDialogState(() => error = '');
+                },
+              ),
+              if (error.isNotEmpty)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(error)
+                      .fontSize(11)
+                      .textColor(AppColors.danger)
+                      .padding(top: 4),
+                ),
+            ],
           ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final name = _platformNameCtrl.text.trim();
+                if (name.isEmpty) {
+                  setDialogState(() => error = '请输入平台名称');
+                  return;
+                }
+                if (_platforms.any((p) => p.name == name)) {
+                  setDialogState(() => error = '该平台已存在');
+                  return;
+                }
+                Navigator.pop(ctx, true);
+              },
+              child: const Text('保存'),
+            ),
+          ],
+        ),
       ),
     );
-    if (saved == true && nameCtrl.text.trim().isNotEmpty) {
-      final color = _palette[_platforms.length % _palette.length];
-      await AppDatabase.instance.addPlatform(nameCtrl.text, color);
+
+    if (saved != true) return;
+    final name = _platformNameCtrl.text.trim();
+    final color = _palette[_platforms.length % _palette.length];
+    try {
+      await AppDatabase.instance.addPlatform(name, color);
       if (!mounted) return;
       bumpDbRevision();
       showToast(context, '平台已添加');
+    } catch (_) {
+      if (!mounted) return;
+      showToast(context, '平台添加失败，请检查名称是否重复');
     }
-    nameCtrl.dispose();
   }
 
   @override
@@ -262,10 +362,9 @@ class _AccountsPageState extends State<AccountsPage> {
         title: const Text('账号台账'),
         actions: [
           TextButton(onPressed: _addPlatform, child: const Text('+ 平台')),
-          IconButton(
-            tooltip: '添加账号',
-            onPressed: _addAccount,
-            icon: const Icon(Icons.add_circle_outline),
+          TextButton(
+            onPressed: () => _openAccountDialog(),
+            child: const Text('+ 账号'),
           ),
           const SizedBox(width: 4),
         ],
@@ -299,7 +398,7 @@ class _AccountsPageState extends State<AccountsPage> {
                         title: '还没有账号',
                         description: '先把平台账号登记进来（只存别名与归属人，不存密码），分配包裹时才能选择。',
                         action: FilledButton(
-                          onPressed: _addAccount,
+                          onPressed: () => _openAccountDialog(),
                           child: const Text('添加账号'),
                         ),
                       )
@@ -348,11 +447,13 @@ class _AccountsPageState extends State<AccountsPage> {
         .padding(right: 8);
   }
 
-  /// 账号卡片。
+  /// 账号卡片，点击进入编辑。
   Widget _buildAccountCard(AccountView view) {
     final color = Color(view.platform.color);
+    final disabled = view.account.status != 'active';
     return AppCard(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      onTap: () => _openAccountDialog(editing: view),
       child: Row(
         children: [
           Text(view.platform.name.characters.first)
@@ -362,7 +463,7 @@ class _AccountsPageState extends State<AccountsPage> {
               .center()
               .constrained(width: 38, height: 38)
               .decorated(
-                color: color.withValues(alpha: 0.1),
+                color: color.withValues(alpha: disabled ? 0.05 : 0.1),
                 borderRadius: BorderRadius.circular(10),
               )
               .padding(right: 12),
@@ -372,7 +473,7 @@ class _AccountsPageState extends State<AccountsPage> {
               Text(view.account.alias)
                   .fontSize(14)
                   .fontWeight(FontWeight.w600)
-                  .textColor(AppColors.ink),
+                  .textColor(disabled ? AppColors.ink3 : AppColors.ink),
               Text(
                 [
                   view.platform.name,
@@ -388,7 +489,14 @@ class _AccountsPageState extends State<AccountsPage> {
                   .padding(top: 3),
             ],
           ).expanded(),
-          AppPill(text: view.account.status == 'active' ? '正常' : '停用'),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppPill(text: disabled ? '停用' : '正常'),
+              const Icon(Icons.edit_outlined, size: 16, color: AppColors.ink3)
+                  .padding(left: 8),
+            ],
+          ),
         ],
       ),
     ).padding(bottom: 8);

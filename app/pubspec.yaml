@@ -43,6 +43,7 @@ dependencies:
   intl: ^0.20.3
   uuid: ^4.6.0
   styled_widget: ^0.4.1
+  flutter_slidable: ^5.2.0
 
 dev_dependencies:
   flutter_test:

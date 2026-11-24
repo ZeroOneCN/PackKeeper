@@ -259,6 +259,72 @@ class AppDatabase {
     await _audit(db, 'account.update', 'account', id, alias.trim());
   }
 
+  /// 删除平台账号。
+  ///
+  /// 参数：[id] 账号主键。
+  /// 该账号下的包裹会退回待认领池；若账号仍关联代下单订单则抛出
+  /// [StateError]，由界面提示用户先处理订单。
+  Future<void> deleteAccount(String id) async {
+    final db = await database;
+    final orderCount = Sqflite.firstIntValue(
+          await db.rawQuery(
+            'SELECT COUNT(*) FROM orders WHERE account_id = ?',
+            [id],
+          ),
+        ) ??
+        0;
+    if (orderCount > 0) {
+      throw StateError('该账号下还有 $orderCount 笔代下单订单，无法删除');
+    }
+    final rows = await db.query(
+      'accounts',
+      columns: ['alias'],
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (rows.isEmpty) return;
+    await db.transaction((txn) async {
+      await txn.update(
+        'parcels',
+        {'account_id': null, 'status': ParcelStatus.pending.name},
+        where: 'account_id = ?',
+        whereArgs: [id],
+      );
+      await txn.delete('accounts', where: 'id = ?', whereArgs: [id]);
+    });
+    await _audit(
+      db,
+      'account.delete',
+      'account',
+      id,
+      (rows.first['alias'] as String?) ?? '',
+    );
+  }
+
+  /// 删除一条包裹记录（待认领池清理误扫件）。
+  ///
+  /// 参数：[id] 包裹主键。
+  Future<void> deleteParcel(String id) async {
+    final db = await database;
+    final rows = await db.query(
+      'parcels',
+      columns: ['tracking_no'],
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (rows.isEmpty) return;
+    await db.delete('parcels', where: 'id = ?', whereArgs: [id]);
+    await _audit(
+      db,
+      'parcel.delete',
+      'parcel',
+      id,
+      (rows.first['tracking_no'] as String?) ?? '',
+    );
+  }
+
   /// 按状态与关键词查询包裹。
   ///
   /// 参数：[status] 可选状态过滤；[keyword] 可选运单号模糊搜索；[limit] 上限。

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:styled_widget/styled_widget.dart';
 
 import '../core/app_events.dart';
@@ -361,10 +362,20 @@ class _AccountsPageState extends State<AccountsPage> {
       appBar: AppBar(
         title: const Text('账号台账'),
         actions: [
-          TextButton(onPressed: _addPlatform, child: const Text('+ 平台')),
-          TextButton(
-            onPressed: () => _openAccountDialog(),
-            child: const Text('+ 账号'),
+          PopupMenuButton<String>(
+            tooltip: '更多操作',
+            icon: const Icon(Icons.more_vert, color: AppColors.ink2),
+            onSelected: (value) {
+              if (value == 'account') {
+                _openAccountDialog();
+              } else {
+                _addPlatform();
+              }
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'account', child: Text('添加账号')),
+              PopupMenuItem(value: 'platform', child: Text('添加平台')),
+            ],
           ),
           const SizedBox(width: 4),
         ],
@@ -404,11 +415,13 @@ class _AccountsPageState extends State<AccountsPage> {
                       )
                     : RefreshIndicator(
                         onRefresh: _load,
-                        child: ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                          itemCount: _accounts.length,
-                          itemBuilder: (context, index) =>
-                              _buildAccountCard(_accounts[index]),
+                        child: SlidableAutoCloseBehavior(
+                          child: ListView.builder(
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                            itemCount: _accounts.length,
+                            itemBuilder: (context, index) =>
+                                _buildAccountCard(_accounts[index]),
+                          ),
                         ),
                       ),
           ),
@@ -447,57 +460,123 @@ class _AccountsPageState extends State<AccountsPage> {
         .padding(right: 8);
   }
 
-  /// 账号卡片，点击进入编辑。
+  /// 删除账号（二次确认）。
+  ///
+  /// 参数：[view] 目标账号；存在代下单订单时数据层会拒绝删除并提示原因。
+  Future<void> _confirmDeleteAccount(AccountView view) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('删除账号'),
+        content: Text(
+          '确认删除「${view.account.alias}」？该账号下的包裹将退回待认领池，删除后不可恢复。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await AppDatabase.instance.deleteAccount(view.account.id);
+    } on StateError catch (e) {
+      if (!mounted) return;
+      showToast(context, e.message);
+      return;
+    } catch (_) {
+      if (!mounted) return;
+      showToast(context, '删除失败，请重试');
+      return;
+    }
+    if (!mounted) return;
+    bumpDbRevision();
+    showToast(context, '账号已删除');
+  }
+
+  /// 账号卡片：左滑出现「编辑 / 删除」，点击卡片进入编辑。
   Widget _buildAccountCard(AccountView view) {
     final color = Color(view.platform.color);
     final disabled = view.account.status != 'active';
-    return AppCard(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      onTap: () => _openAccountDialog(editing: view),
-      child: Row(
+    return Slidable(
+      key: ValueKey(view.account.id),
+      groupTag: 'accounts',
+      endActionPane: ActionPane(
+        motion: const ScrollMotion(),
+        extentRatio: 0.42,
         children: [
-          Text(view.platform.name.characters.first)
-              .fontSize(15)
-              .fontWeight(FontWeight.w700)
-              .textColor(color)
-              .center()
-              .constrained(width: 38, height: 38)
-              .decorated(
-                color: color.withValues(alpha: disabled ? 0.05 : 0.1),
-                borderRadius: BorderRadius.circular(10),
-              )
-              .padding(right: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(view.account.alias)
-                  .fontSize(14)
-                  .fontWeight(FontWeight.w600)
-                  .textColor(disabled ? AppColors.ink3 : AppColors.ink),
-              Text(
-                [
-                  view.platform.name,
-                  if (view.account.owner.isNotEmpty)
-                    '归属 ${view.account.owner}',
-                  if (view.account.note.isNotEmpty) view.account.note,
-                ].join(' · '),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              )
-                  .fontSize(12)
-                  .textColor(AppColors.ink3)
-                  .padding(top: 3),
-            ],
-          ).expanded(),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AppPill(text: disabled ? '停用' : '正常'),
-              const Icon(Icons.edit_outlined, size: 16, color: AppColors.ink3)
-                  .padding(left: 8),
-            ],
+          SlidableAction(
+            onPressed: (_) => _openAccountDialog(editing: view),
+            backgroundColor: AppColors.brand,
+            foregroundColor: Colors.white,
+            borderRadius: const BorderRadius.horizontal(
+              left: Radius.circular(kCardRadius),
+            ),
+            icon: Icons.edit_outlined,
+            label: '编辑',
+            labelStyle: const TextStyle(fontSize: 12),
+          ),
+          SlidableAction(
+            onPressed: (_) => _confirmDeleteAccount(view),
+            backgroundColor: AppColors.danger,
+            foregroundColor: Colors.white,
+            borderRadius: const BorderRadius.horizontal(
+              right: Radius.circular(kCardRadius),
+            ),
+            icon: Icons.delete_outline,
+            label: '删除',
+            labelStyle: const TextStyle(fontSize: 12),
           ),
         ],
+      ),
+      child: AppCard(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        onTap: () => _openAccountDialog(editing: view),
+        child: Row(
+          children: [
+            Text(view.platform.name.characters.first)
+                .fontSize(15)
+                .fontWeight(FontWeight.w700)
+                .textColor(color)
+                .center()
+                .constrained(width: 38, height: 38)
+                .decorated(
+                  color: color.withValues(alpha: disabled ? 0.05 : 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                )
+                .padding(right: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(view.account.alias)
+                    .fontSize(14)
+                    .fontWeight(FontWeight.w600)
+                    .textColor(disabled ? AppColors.ink3 : AppColors.ink),
+                Text(
+                  [
+                    view.platform.name,
+                    if (view.account.owner.isNotEmpty)
+                      '归属 ${view.account.owner}',
+                    if (view.account.note.isNotEmpty) view.account.note,
+                  ].join(' · '),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                )
+                    .fontSize(12)
+                    .textColor(AppColors.ink3)
+                    .padding(top: 3),
+              ],
+            ).expanded(),
+            AppPill(text: disabled ? '停用' : '正常'),
+          ],
+        ),
       ),
     ).padding(bottom: 8);
   }

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:styled_widget/styled_widget.dart';
 
 import '../core/db.dart';
 import '../core/models.dart';
@@ -201,182 +202,148 @@ class _ScanPageState extends State<ScanPage> {
 
   /// 顶部返回、标题与手电筒。
   Widget _buildTopBar() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.of(context).pop(0),
-            icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-            color: Colors.white,
-          ),
-          const Text(
-            '扫码入库',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const Spacer(),
-          IconButton(
-            onPressed: _toggleTorch,
-            icon: Icon(_torchOn ? Icons.flash_on : Icons.flash_off),
-            color: _torchOn ? const Color(0xFFFFD60A) : Colors.white,
-          ),
-        ],
-      ),
-    );
+    return Row(
+      children: [
+        IconButton(
+          onPressed: () => Navigator.of(context).pop(0),
+          icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+          color: Colors.white,
+        ),
+        const Text('扫码入库')
+            .textColor(Colors.white)
+            .fontSize(17)
+            .fontWeight(FontWeight.w600),
+        const Spacer(),
+        IconButton(
+          onPressed: _toggleTorch,
+          icon: Icon(_torchOn ? Icons.flash_on : Icons.flash_off),
+          color: _torchOn ? const Color(0xFFFFD60A) : Colors.white,
+        ),
+      ],
+    ).padding(horizontal: 8, vertical: 6);
   }
 
   /// 底部结果面板：计数、列表与操作。
   Widget _buildPanel(int total, int duplicates, int pending) {
-    return Container(
-      height: 300,
-      width: double.infinity,
-      decoration: const BoxDecoration(
-        color: Color(0xFF111827),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Text(
-                '本次扫描 $total 件',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(width: 8),
-              if (duplicates > 0)
-                Text(
-                  '重复 $duplicates',
-                  style: const TextStyle(color: Color(0xFFFCA5A5), fontSize: 12),
-                ),
-              const Spacer(),
-              Text(
-                '待入库 $pending',
-                style: const TextStyle(color: Color(0xFF86EFAC), fontSize: 12),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Expanded(
-            child: _entries.isEmpty
-                ? const Center(
-                    child: Text(
-                      '将快递条码对准取景框，支持连续扫描',
-                      style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 13),
-                    ),
-                  )
-                : ListView.separated(
-                    itemCount: _entries.length,
-                    separatorBuilder: (_, _) => const Divider(
-                      height: 1,
-                      color: Color(0xFF1F2937),
-                    ),
-                    itemBuilder: (context, index) {
-                      final entry = _entries.values
-                          .toList()
-                          .reversed
-                          .elementAt(index);
-                      return _buildEntryRow(entry);
-                    },
+    return Column(
+      children: [
+        Row(
+          children: [
+            Text('本次扫描 $total 件')
+                .textColor(Colors.white)
+                .fontSize(15)
+                .fontWeight(FontWeight.w600),
+            if (duplicates > 0)
+              Text('重复 $duplicates')
+                  .textColor(const Color(0xFFFCA5A5))
+                  .fontSize(12)
+                  .padding(left: 8),
+            const Spacer(),
+            Text('待入库 $pending')
+                .textColor(const Color(0xFF86EFAC))
+                .fontSize(12),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Expanded(
+          child: _entries.isEmpty
+              ? const Text('将快递条码对准取景框，支持连续扫描')
+                  .textColor(Color(0xFF9CA3AF))
+                  .fontSize(13)
+                  .center()
+              : ListView.separated(
+                  itemCount: _entries.length,
+                  separatorBuilder: (_, _) => const Divider(
+                    height: 1,
+                    color: Color(0xFF1F2937),
                   ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _saving ? null : _manualInput,
-                  icon: const Icon(Icons.keyboard, size: 18),
-                  label: const Text('手输单号'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    side: const BorderSide(color: Color(0xFF374151)),
-                    minimumSize: const Size(0, 46),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
+                  itemBuilder: (context, index) {
+                    final entry = _entries.values
+                        .toList()
+                        .reversed
+                        .elementAt(index);
+                    return _buildEntryRow(entry);
+                  },
+                ),
+        ),
+        Row(
+          children: [
+            OutlinedButton.icon(
+              onPressed: _saving ? null : _manualInput,
+              icon: const Icon(Icons.keyboard, size: 18),
+              label: const Text('手输单号'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                side: const BorderSide(color: Color(0xFF374151)),
+                minimumSize: const Size(0, 46),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                flex: 2,
-                child: FilledButton(
-                  onPressed: _saving ? null : _commit,
-                  child: _saving
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : Text(pending > 0 ? '完成入库（$pending）' : '完成'),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
+            ).expanded(),
+            const SizedBox(width: 10),
+            FilledButton(
+              onPressed: _saving ? null : _commit,
+              child: _saving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(pending > 0 ? '完成入库（$pending）' : '完成'),
+            ).expanded(flex: 2),
+          ],
+        ).padding(top: 10),
+      ],
+    )
+        .padding(left: 16, top: 14, right: 16, bottom: 12)
+        .constrained(width: double.infinity, height: 300)
+        .decorated(
+          color: const Color(0xFF111827),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        );
   }
 
   /// 单条扫描记录。
   Widget _buildEntryRow(_ScanEntry entry) {
     final info = entry.info;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 9),
-      child: Row(
-        children: [
-          Icon(
-            entry.duplicate ? Icons.error_outline : Icons.check_circle_outline,
-            size: 18,
-            color: entry.duplicate
-                ? const Color(0xFFFCA5A5)
-                : const Color(0xFF86EFAC),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  info.normalized,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.3,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  entry.duplicate
-                      ? '已存在，不会重复入库'
-                      : '${info.carrier.isEmpty ? '未知快递' : info.carrier}'
-                          '${info.suspicious ? ' · ${info.hint}' : ''}',
-                  style: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 11),
-                ),
-              ],
-            ),
-          ),
-          Text(
-            entry.source.label,
-            style: const TextStyle(color: Color(0xFF6B7280), fontSize: 11),
-          ),
-        ],
-      ),
-    );
+    return Row(
+      children: [
+        Icon(
+          entry.duplicate ? Icons.error_outline : Icons.check_circle_outline,
+          size: 18,
+          color: entry.duplicate
+              ? const Color(0xFFFCA5A5)
+              : const Color(0xFF86EFAC),
+        ),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(info.normalized)
+                .textColor(Colors.white)
+                .fontSize(13)
+                .fontWeight(FontWeight.w600)
+                .letterSpacing(0.3),
+            Text(
+              entry.duplicate
+                  ? '已存在，不会重复入库'
+                  : '${info.carrier.isEmpty ? '未知快递' : info.carrier}'
+                      '${info.suspicious ? ' · ${info.hint}' : ''}',
+            )
+                .textColor(const Color(0xFF9CA3AF))
+                .fontSize(11)
+                .padding(top: 2),
+          ],
+        ).padding(left: 8).expanded(),
+        Text(entry.source.label)
+            .textColor(const Color(0xFF6B7280))
+            .fontSize(11),
+      ],
+    ).padding(vertical: 9);
   }
 }
 
@@ -435,40 +402,26 @@ class _CameraError extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ColoredBox(
-      color: Colors.black,
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.no_photography_outlined,
-                  color: Colors.white70, size: 40),
-              const SizedBox(height: 14),
-              const Text(
-                '相机不可用',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                '请检查相机权限后重试（$message）',
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white54, fontSize: 12),
-              ),
-              const SizedBox(height: 18),
-              FilledButton(
-                onPressed: () => Navigator.of(context).pop(0),
-                child: const Text('返回'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Icon(Icons.no_photography_outlined,
+            color: Colors.white70, size: 40),
+        const Text('相机不可用')
+            .textColor(Colors.white)
+            .fontSize(16)
+            .fontWeight(FontWeight.w600)
+            .padding(top: 14),
+        Text('请检查相机权限后重试（$message）')
+            .textColor(Colors.white54)
+            .fontSize(12)
+            .textAlignment(TextAlign.center)
+            .padding(top: 6),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(0),
+          child: const Text('返回'),
+        ).padding(top: 18),
+      ],
+    ).padding(horizontal: 32).center().backgroundColor(Colors.black);
   }
 }

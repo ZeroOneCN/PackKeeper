@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:styled_widget/styled_widget.dart';
 
 import '../core/app_events.dart';
 import '../core/db.dart';
@@ -91,34 +92,30 @@ class _AccountsPageState extends State<AccountsPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  InkWell(
-                    borderRadius: BorderRadius.circular(12),
-                    onTap: () async {
-                      final picked = await _pickPlatform(ctx);
-                      if (picked != null) {
-                        setDialogState(() => platformId = picked);
-                      }
-                    },
-                    child: InputDecorator(
-                      decoration: appInput(label: '所属平台'),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              platformName,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                color: AppColors.ink,
-                              ),
-                            ),
-                          ),
-                          const Icon(Icons.expand_more,
-                              size: 20, color: AppColors.ink3),
-                        ],
-                      ),
+                  InputDecorator(
+                    decoration: appInput(label: '所属平台'),
+                    child: Row(
+                      children: [
+                        Text(platformName)
+                            .fontSize(14)
+                            .textColor(AppColors.ink)
+                            .expanded(),
+                        const Icon(Icons.expand_more,
+                            size: 20, color: AppColors.ink3),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 10),
+                  )
+                      .ripple(
+                        customBorder: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(12)),
+                        ),
+                      )
+                      .gestures(onTap: () async {
+                        final picked = await _pickPlatform(ctx);
+                        if (picked != null) {
+                          setDialogState(() => platformId = picked);
+                        }
+                      }),
                   TextField(
                     controller: aliasCtrl,
                     decoration: appInput(
@@ -128,27 +125,22 @@ class _AccountsPageState extends State<AccountsPage> {
                     onChanged: (_) {
                       if (showError) setDialogState(() => showError = false);
                     },
-                  ),
-                  if (showError) ...[
-                    const SizedBox(height: 4),
-                    const Align(
+                  ).padding(top: 10),
+                  if (showError)
+                    Align(
                       alignment: Alignment.centerLeft,
-                      child: Text(
-                        '请填写账号别名',
-                        style: TextStyle(fontSize: 11, color: AppColors.danger),
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 10),
+                      child: const Text('请填写账号别名')
+                          .fontSize(11)
+                          .textColor(AppColors.danger),
+                    ).padding(top: 4),
                   TextField(
                     controller: ownerCtrl,
                     decoration: appInput(label: '归属员工', hint: '可留空'),
-                  ),
-                  const SizedBox(height: 10),
+                  ).padding(top: 10),
                   TextField(
                     controller: noteCtrl,
                     decoration: appInput(label: '备注', hint: '手机号尾号等线索'),
-                  ),
+                  ).padding(top: 10),
                 ],
               ),
             ),
@@ -215,14 +207,11 @@ class _AccountsPageState extends State<AccountsPage> {
                 children: [
                   for (final platform in _platforms)
                     ListTile(
-                      leading: Container(
-                        width: 10,
-                        height: 10,
-                        decoration: BoxDecoration(
-                          color: Color(platform.color),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
+                      leading: const SizedBox(width: 10, height: 10)
+                          .decorated(
+                            color: Color(platform.color),
+                            shape: BoxShape.circle,
+                          ),
                       title: Text(platform.name),
                       onTap: () => Navigator.pop(ctx, platform.id),
                     ),
@@ -283,29 +272,23 @@ class _AccountsPageState extends State<AccountsPage> {
       ),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: TextField(
-              controller: _searchCtrl,
-              onChanged: (_) => _load(),
-              decoration: appInput(
-                hint: '搜索账号别名或归属人',
-                prefix: const Icon(Icons.search, size: 20, color: AppColors.ink3),
-              ),
+          TextField(
+            controller: _searchCtrl,
+            onChanged: (_) => _load(),
+            decoration: appInput(
+              hint: '搜索账号别名或归属人',
+              prefix: const Icon(Icons.search, size: 20, color: AppColors.ink3),
             ),
-          ),
-          SizedBox(
-            height: 40,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: [
-                _buildPlatformChip('全部', null),
-                for (final platform in _platforms)
-                  _buildPlatformChip(platform.name, platform.id),
-              ],
-            ),
-          ),
+          ).padding(left: 16, right: 16, bottom: 8),
+          ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            children: [
+              _buildPlatformChip('全部', null),
+              for (final platform in _platforms)
+                _buildPlatformChip(platform.name, platform.id),
+            ],
+          ).height(40),
           const SizedBox(height: 4),
           Expanded(
             child: _loading
@@ -338,95 +321,76 @@ class _AccountsPageState extends State<AccountsPage> {
   /// 平台筛选标签。
   Widget _buildPlatformChip(String label, String? id) {
     final active = _platformId == id;
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: GestureDetector(
-        onTap: () {
+    return Text(label)
+        .fontSize(12)
+        .fontWeight(FontWeight.w600)
+        .textColor(active ? Colors.white : AppColors.ink2)
+        .center()
+        .padding(horizontal: 14)
+        .ripple(
+          customBorder: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(999)),
+          ),
+        )
+        .gestures(onTap: () {
           setState(() {
             _platformId = id;
             _loading = true;
           });
           _load();
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: active ? AppColors.brand : AppColors.surface,
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: active ? AppColors.brand : AppColors.line),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: active ? Colors.white : AppColors.ink2,
-            ),
-          ),
-        ),
-      ),
-    );
+        })
+        .clipRRect(all: 999)
+        .decorated(
+          color: active ? AppColors.brand : AppColors.surface,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: active ? AppColors.brand : AppColors.line),
+        )
+        .padding(right: 8);
   }
 
   /// 账号卡片。
   Widget _buildAccountCard(AccountView view) {
     final color = Color(view.platform.color);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: AppCard(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        child: Row(
-          children: [
-            Container(
-              width: 38,
-              height: 38,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
+    return AppCard(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      child: Row(
+        children: [
+          Text(view.platform.name.characters.first)
+              .fontSize(15)
+              .fontWeight(FontWeight.w700)
+              .textColor(color)
+              .center()
+              .constrained(width: 38, height: 38)
+              .decorated(
                 color: color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                view.platform.name.characters.first,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: color,
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    view.account.alias,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.ink,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    [
-                      view.platform.name,
-                      if (view.account.owner.isNotEmpty)
-                        '归属 ${view.account.owner}',
-                      if (view.account.note.isNotEmpty) view.account.note,
-                    ].join(' · '),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 12, color: AppColors.ink3),
-                  ),
-                ],
-              ),
-            ),
-            AppPill(text: view.account.status == 'active' ? '正常' : '停用'),
-          ],
-        ),
+              )
+              .padding(right: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(view.account.alias)
+                  .fontSize(14)
+                  .fontWeight(FontWeight.w600)
+                  .textColor(AppColors.ink),
+              Text(
+                [
+                  view.platform.name,
+                  if (view.account.owner.isNotEmpty)
+                    '归属 ${view.account.owner}',
+                  if (view.account.note.isNotEmpty) view.account.note,
+                ].join(' · '),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              )
+                  .fontSize(12)
+                  .textColor(AppColors.ink3)
+                  .padding(top: 3),
+            ],
+          ).expanded(),
+          AppPill(text: view.account.status == 'active' ? '正常' : '停用'),
+        ],
       ),
-    );
+    ).padding(bottom: 8);
   }
 }

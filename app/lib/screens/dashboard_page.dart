@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:styled_widget/styled_widget.dart';
 
 import '../core/app_events.dart';
 import '../core/db.dart';
@@ -101,51 +102,41 @@ class _DashboardPageState extends State<DashboardPage> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
           children: [
-            Text(
-              '$greeting，李主管',
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w700,
-                color: AppColors.ink,
-                letterSpacing: -0.2,
-              ),
-            ),
-            const SizedBox(height: 4),
+            Text('$greeting，李主管')
+                .fontSize(24)
+                .fontWeight(FontWeight.w700)
+                .textColor(AppColors.ink)
+                .letterSpacing(-0.2),
             Text(
               stats == null
                   ? '正在读取本地数据…'
                   : '今日已完成 ${stats.todayScanned} 次扫描，${stats.pending} 件等待认领',
-              style: const TextStyle(fontSize: 13, color: AppColors.ink3),
-            ),
-            const SizedBox(height: 18),
-            _StatsGrid(stats: stats),
+            )
+                .fontSize(13)
+                .textColor(AppColors.ink3)
+                .padding(top: 4),
+            _StatsGrid(stats: stats).padding(top: 18),
             const SectionHeader(title: '快捷操作'),
             Row(
               children: [
-                Expanded(
-                  child: _QuickAction(
-                    icon: Icons.qr_code_scanner,
-                    label: '扫码入库',
-                    highlight: true,
-                    onTap: _openScan,
-                  ),
-                ),
+                _QuickAction(
+                  icon: Icons.qr_code_scanner,
+                  label: '扫码入库',
+                  highlight: true,
+                  onTap: _openScan,
+                ).expanded(),
                 const SizedBox(width: 10),
-                Expanded(
-                  child: _QuickAction(
-                    icon: Icons.document_scanner_outlined,
-                    label: '面单识别',
-                    onTap: _openWaybill,
-                  ),
-                ),
+                _QuickAction(
+                  icon: Icons.document_scanner_outlined,
+                  label: '面单识别',
+                  onTap: _openWaybill,
+                ).expanded(),
                 const SizedBox(width: 10),
-                Expanded(
-                  child: _QuickAction(
-                    icon: Icons.receipt_long_outlined,
-                    label: '代下单',
-                    onTap: _openOrder,
-                  ),
-                ),
+                _QuickAction(
+                  icon: Icons.receipt_long_outlined,
+                  label: '代下单',
+                  onTap: _openOrder,
+                ).expanded(),
               ],
             ),
             SectionHeader(
@@ -163,40 +154,32 @@ class _DashboardPageState extends State<DashboardPage> {
               )
             else
               ..._recent.map(
-                (parcel) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: AppCard(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    onTap: () => widget.onGoTab(1),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                parcel.trackingNo,
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.ink,
-                                  letterSpacing: 0.3,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${parcel.carrier.isEmpty ? '未知快递' : parcel.carrier} · '
-                                '${parcel.source.label} · ${formatTime(parcel.scannedAt)}',
-                                style: const TextStyle(fontSize: 12, color: AppColors.ink3),
-                              ),
-                            ],
-                          ),
-                        ),
-                        StatusChip(status: parcel.status, dense: true),
-                      ],
-                    ),
+                (parcel) => AppCard(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  onTap: () => widget.onGoTab(1),
+                  child: Row(
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(parcel.trackingNo)
+                              .fontSize(14)
+                              .fontWeight(FontWeight.w600)
+                              .textColor(AppColors.ink)
+                              .letterSpacing(0.3),
+                          Text(
+                            '${parcel.carrier.isEmpty ? '未知快递' : parcel.carrier} · '
+                            '${parcel.source.label} · ${formatTime(parcel.scannedAt)}',
+                          )
+                              .fontSize(12)
+                              .textColor(AppColors.ink3)
+                              .padding(top: 4),
+                        ],
+                      ).expanded(),
+                      StatusChip(status: parcel.status, dense: true),
+                    ],
                   ),
-                ),
+                ).padding(bottom: 8),
               ),
           ],
         ),
@@ -223,17 +206,17 @@ class _StatsGrid extends StatelessWidget {
       children: [
         Row(
           children: [
-            Expanded(child: _MetricCard(item: items[0])),
+            _MetricCard(item: items[0]).expanded(),
             const SizedBox(width: 10),
-            Expanded(child: _MetricCard(item: items[1])),
+            _MetricCard(item: items[1]).expanded(),
           ],
         ),
         const SizedBox(height: 10),
         Row(
           children: [
-            Expanded(child: _MetricCard(item: items[2])),
+            _MetricCard(item: items[2]).expanded(),
             const SizedBox(width: 10),
-            Expanded(child: _MetricCard(item: items[3])),
+            _MetricCard(item: items[3]).expanded(),
           ],
         ),
       ],
@@ -257,23 +240,18 @@ class _MetricCard extends StatelessWidget {
           Row(
             children: [
               Icon(item.$3, size: 16, color: item.$4),
-              const SizedBox(width: 6),
-              Text(
-                item.$1,
-                style: const TextStyle(fontSize: 12, color: AppColors.ink2),
-              ),
+              Text(item.$1)
+                  .fontSize(12)
+                  .textColor(AppColors.ink2)
+                  .padding(left: 6),
             ],
           ),
-          const SizedBox(height: 10),
-          Text(
-            '${item.$2}',
-            style: const TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.w700,
-              color: AppColors.ink,
-              height: 1,
-            ),
-          ),
+          Text('${item.$2}')
+              .fontSize(26)
+              .fontWeight(FontWeight.w700)
+              .textColor(AppColors.ink)
+              .textStyle(const TextStyle(height: 1))
+              .padding(top: 10),
         ],
       ),
     );
@@ -305,15 +283,11 @@ class _QuickAction extends StatelessWidget {
       child: Column(
         children: [
           Icon(icon, size: 22, color: highlight ? Colors.white : AppColors.brandDeep),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: fg,
-            ),
-          ),
+          Text(label)
+              .fontSize(12)
+              .fontWeight(FontWeight.w600)
+              .textColor(fg)
+              .padding(top: 8),
         ],
       ),
     );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:styled_widget/styled_widget.dart';
 
 import '../core/app_events.dart';
 import '../core/db.dart';
@@ -59,157 +60,110 @@ class _AssignSheetState extends State<AssignSheet> {
       platformNames[view.platform.id] = view.platform.name;
     }
 
-    return Container(
-      height: MediaQuery.sizeOf(context).height * 0.72,
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      child: Column(
-        children: [
-          const SizedBox(height: 10),
-          Container(
-            width: 36,
-            height: 4,
-            decoration: BoxDecoration(
-              color: AppColors.line,
-              borderRadius: BorderRadius.circular(2),
+    return Column(
+      children: [
+        const SizedBox(width: 36, height: 4).decorated(
+          color: AppColors.line,
+          borderRadius: BorderRadius.circular(2),
+        ).padding(top: 10),
+        Row(
+          children: [
+            const Text('分配归属')
+                .fontSize(17)
+                .fontWeight(FontWeight.w600)
+                .textColor(AppColors.ink),
+            Text('${widget.parcelIds.length} 件')
+                .fontSize(12)
+                .textColor(AppColors.ink3)
+                .padding(left: 8),
+            const Spacer(),
+            IconButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              icon: const Icon(Icons.close, size: 20),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 14, 12, 6),
-            child: Row(
-              children: [
-                const Text(
-                  '分配归属',
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.ink,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '${widget.parcelIds.length} 件',
-                  style: const TextStyle(fontSize: 12, color: AppColors.ink3),
-                ),
-                const Spacer(),
-                IconButton(
-                  onPressed: () => Navigator.of(context).pop(false),
-                  icon: const Icon(Icons.close, size: 20),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator())
-                : _accounts.isEmpty
-                    ? EmptyState(
-                        icon: Icons.badge_outlined,
-                        title: '还没有平台账号',
-                        description: '请先在「台账」页添加平台账号，再回来分配包裹。',
-                        action: FilledButton(
-                          onPressed: () => Navigator.of(context).pop(false),
-                          child: const Text('知道了'),
-                        ),
-                      )
-                    : ListView(
-                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-                        children: [
-                          for (final entry in grouped.entries) ...[
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(4, 12, 4, 8),
-                              child: Text(
-                                platformNames[entry.key] ?? '',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.ink3,
-                                ),
-                              ),
-                            ),
-                            for (final view in entry.value)
-                              _buildAccountRow(view),
-                          ],
-                        ],
+          ],
+        ).padding(left: 20, top: 14, right: 12, bottom: 6),
+        Expanded(
+          child: _loading
+              ? const Center(child: CircularProgressIndicator())
+              : _accounts.isEmpty
+                  ? EmptyState(
+                      icon: Icons.badge_outlined,
+                      title: '还没有平台账号',
+                      description: '请先在「台账」页添加平台账号，再回来分配包裹。',
+                      action: FilledButton(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        child: const Text('知道了'),
                       ),
-          ),
-          Container(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
-            decoration: const BoxDecoration(
-              border: Border(top: BorderSide(color: AppColors.line)),
+                    )
+                  : ListView(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                      children: [
+                        for (final entry in grouped.entries) ...[
+                          Text(platformNames[entry.key] ?? '')
+                              .fontSize(12)
+                              .fontWeight(FontWeight.w600)
+                              .textColor(AppColors.ink3)
+                              .padding(left: 4, top: 12, right: 4, bottom: 8),
+                          for (final view in entry.value) _buildAccountRow(view),
+                        ],
+                      ],
+                    ),
+        ),
+        FilledButton(
+          onPressed:
+              (_pickedAccountId == null || _saving) ? null : _submit,
+          child: Text(_pickedAccountId == null ? '请选择账号' : '确认分配'),
+        )
+            .width(double.infinity)
+            .padding(left: 16, top: 10, right: 16, bottom: 12)
+            .safeArea(top: false)
+            .decorated(
+              border: const Border(top: BorderSide(color: AppColors.line)),
             ),
-            child: SafeArea(
-              top: false,
-              child: SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: (_pickedAccountId == null || _saving) ? null : _submit,
-                  child: Text(
-                    _pickedAccountId == null ? '请选择账号' : '确认分配',
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+      ],
+    ).height(MediaQuery.sizeOf(context).height * 0.72).decorated(
+          color: AppColors.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        );
   }
 
   /// 单个账号选项。
   Widget _buildAccountRow(AccountView view) {
     final picked = _pickedAccountId == view.account.id;
     final color = Color(view.platform.color);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: AppCard(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        borderColor: picked ? AppColors.brand : AppColors.line,
-        color: picked ? AppColors.brandSoft : AppColors.surface,
-        onTap: () => setState(() => _pickedAccountId = view.account.id),
-        child: Row(
-          children: [
-            Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    view.account.alias,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.ink,
-                    ),
-                  ),
-                  if (view.account.owner.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      '归属人 ${view.account.owner}',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AppColors.ink3,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            Icon(
-              picked ? Icons.check_circle : Icons.circle_outlined,
-              size: 20,
-              color: picked ? AppColors.brand : AppColors.ink3,
-            ),
-          ],
-        ),
+    return AppCard(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      borderColor: picked ? AppColors.brand : AppColors.line,
+      color: picked ? AppColors.brandSoft : AppColors.surface,
+      onTap: () => setState(() => _pickedAccountId = view.account.id),
+      child: Row(
+        children: [
+          const SizedBox(width: 8, height: 8).decorated(
+            color: color,
+            shape: BoxShape.circle,
+          ).padding(right: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(view.account.alias)
+                  .fontSize(14)
+                  .fontWeight(FontWeight.w600)
+                  .textColor(AppColors.ink),
+              if (view.account.owner.isNotEmpty)
+                Text('归属人 ${view.account.owner}')
+                    .fontSize(11)
+                    .textColor(AppColors.ink3)
+                    .padding(top: 2),
+            ],
+          ).expanded(),
+          Icon(
+            picked ? Icons.check_circle : Icons.circle_outlined,
+            size: 20,
+            color: picked ? AppColors.brand : AppColors.ink3,
+          ),
+        ],
       ),
-    );
+    ).padding(bottom: 8);
   }
 }

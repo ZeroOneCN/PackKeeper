@@ -5,6 +5,7 @@ import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:styled_widget/styled_widget.dart';
 
 import '../core/app_events.dart';
 import '../core/db.dart';
@@ -155,63 +156,45 @@ class _WaybillPageState extends State<WaybillPage> {
       padding: const EdgeInsets.fromLTRB(20, 28, 20, 24),
       child: Column(
         children: [
-          Container(
-            width: 72,
-            height: 72,
-            decoration: const BoxDecoration(
-              color: AppColors.brandSoft,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.document_scanner_outlined,
-              size: 32,
-              color: AppColors.brandDeep,
-            ),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            '拍摄快递面单',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: AppColors.ink,
-            ),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            '尽量正对、铺平、避免反光；单号会与条码交叉校验。',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12, color: AppColors.ink3, height: 1.5),
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: _busy
-                  ? null
-                  : () => _pickAndRecognize(ImageSource.camera),
-              icon: const Icon(Icons.photo_camera_outlined, size: 18),
-              label: const Text('拍照识别'),
-            ),
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed:
-                  _busy ? null : () => _pickAndRecognize(ImageSource.gallery),
-              icon: const Icon(Icons.photo_library_outlined, size: 18),
-              label: const Text('从相册选择'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.ink2,
-                minimumSize: const Size(0, 46),
-                side: const BorderSide(color: AppColors.line),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+          const Icon(
+            Icons.document_scanner_outlined,
+            size: 32,
+            color: AppColors.brandDeep,
+          ).center().constrained(width: 72, height: 72).decorated(
+                color: AppColors.brandSoft,
+                shape: BoxShape.circle,
+              ),
+          const Text('拍摄快递面单')
+              .fontSize(16)
+              .fontWeight(FontWeight.w600)
+              .textColor(AppColors.ink)
+              .padding(top: 16),
+          const Text('尽量正对、铺平、避免反光；单号会与条码交叉校验。')
+              .fontSize(12)
+              .textColor(AppColors.ink3)
+              .textStyle(const TextStyle(height: 1.5))
+              .textAlignment(TextAlign.center)
+              .padding(top: 6),
+          FilledButton.icon(
+            onPressed:
+                _busy ? null : () => _pickAndRecognize(ImageSource.camera),
+            icon: const Icon(Icons.photo_camera_outlined, size: 18),
+            label: const Text('拍照识别'),
+          ).width(double.infinity).padding(top: 20),
+          OutlinedButton.icon(
+            onPressed:
+                _busy ? null : () => _pickAndRecognize(ImageSource.gallery),
+            icon: const Icon(Icons.photo_library_outlined, size: 18),
+            label: const Text('从相册选择'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.ink2,
+              minimumSize: const Size(0, 46),
+              side: const BorderSide(color: AppColors.line),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
             ),
-          ),
+          ).width(double.infinity).padding(top: 10),
         ],
       ),
     );
@@ -220,54 +203,46 @@ class _WaybillPageState extends State<WaybillPage> {
   /// 已拍照后的预览、OCR 文本与可编辑字段。
   List<Widget> _buildResult() {
     return [
-      ClipRRect(
-        borderRadius: BorderRadius.circular(14),
-        child: Stack(
-          children: [
-            Image.file(
-              File(_imagePath),
-              height: 180,
-              width: double.infinity,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => Container(
-                height: 180,
-                color: AppColors.surface2,
-                alignment: Alignment.center,
-                child: const Text('图片加载失败'),
-              ),
-            ),
-            Positioned(
-              right: 8,
-              top: 8,
-              child: Material(
+      Stack(
+        children: [
+          Image.file(
+            File(_imagePath),
+            height: 180,
+            width: double.infinity,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => const Text('图片加载失败')
+                .center()
+                .height(180)
+                .backgroundColor(AppColors.surface2),
+          ),
+          const Text('重拍')
+              .textColor(Colors.white)
+              .fontSize(12)
+              .padding(horizontal: 12, vertical: 6)
+              .ripple(
+                customBorder: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(999)),
+                ),
+              )
+              .gestures(
+                onTap: _busy
+                    ? null
+                    : () => _pickAndRecognize(ImageSource.camera),
+              )
+              .clipRRect(all: 999)
+              .decorated(
                 color: Colors.black54,
                 borderRadius: BorderRadius.circular(999),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(999),
-                  onTap: _busy
-                      ? null
-                      : () => _pickAndRecognize(ImageSource.camera),
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    child: Text(
-                      '重拍',
-                      style: TextStyle(color: Colors.white, fontSize: 12),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+              )
+              .positioned(top: 8, right: 8),
+        ],
+      ).clipRRect(all: 14),
       if (_busy) ...[
-        const SizedBox(height: 12),
-        const LinearProgressIndicator(minHeight: 3),
-        const SizedBox(height: 6),
-        const Text(
-          '正在本机识别面单…',
-          style: TextStyle(fontSize: 12, color: AppColors.ink3),
-        ),
+        const LinearProgressIndicator(minHeight: 3).padding(top: 12),
+        const Text('正在本机识别面单…')
+            .fontSize(12)
+            .textColor(AppColors.ink3)
+            .padding(top: 6),
       ],
       const SectionHeader(title: '识别结果'),
       AppCard(
@@ -286,52 +261,39 @@ class _WaybillPageState extends State<WaybillPage> {
                     : null,
               ),
             ),
-            if (_suspicious) ...[
-              const SizedBox(height: 6),
-              const Text(
-                '单号可能不完整，请对照面单核对',
-                style: TextStyle(fontSize: 11, color: AppColors.warn),
-              ),
-            ],
-            const SizedBox(height: 10),
+            if (_suspicious)
+              const Text('单号可能不完整，请对照面单核对')
+                  .fontSize(11)
+                  .textColor(AppColors.warn)
+                  .padding(top: 6),
             TextField(
               controller: _carrierCtrl,
               decoration: appInput(label: '快递公司', hint: '自动识别，可修改'),
-            ),
-            const SizedBox(height: 10),
+            ).padding(top: 10),
             TextField(
               controller: _tailCtrl,
               keyboardType: TextInputType.number,
               decoration: appInput(label: '收件人尾号', hint: '手机号后四位'),
-            ),
-            const SizedBox(height: 10),
+            ).padding(top: 10),
             TextField(
               controller: _addressCtrl,
               decoration: appInput(label: '地址线索', hint: '省市区关键词'),
-            ),
+            ).padding(top: 10),
           ],
         ),
       ),
       const SectionHeader(title: '面单原文'),
       AppCard(
         color: AppColors.surface2,
-        child: Text(
-          _ocrText.isEmpty ? '未识别到文字' : _ocrText,
-          style: const TextStyle(
-            fontSize: 12,
-            color: AppColors.ink2,
-            height: 1.6,
-          ),
-        ),
+        child: Text(_ocrText.isEmpty ? '未识别到文字' : _ocrText)
+            .fontSize(12)
+            .textColor(AppColors.ink2)
+            .textStyle(const TextStyle(height: 1.6)),
       ),
-      const SizedBox(height: 18),
-      SizedBox(
-        width: double.infinity,
-        child: FilledButton(
-          onPressed: _busy ? null : _save,
-          child: const Text('保存并加入待认领池'),
-        ),
-      ),
+      FilledButton(
+        onPressed: _busy ? null : _save,
+        child: const Text('保存并加入待认领池'),
+      ).width(double.infinity).padding(top: 18),
     ];
   }
 }

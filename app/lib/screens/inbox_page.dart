@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:styled_widget/styled_widget.dart';
 
 import '../core/app_events.dart';
 import '../core/db.dart';
@@ -145,40 +146,34 @@ class _InboxPageState extends State<InboxPage> {
       ),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: TextField(
-              controller: _searchCtrl,
-              onChanged: _onSearchChanged,
-              decoration: appInput(
-                hint: '搜索运单号',
-                prefix: const Icon(Icons.search, size: 20, color: AppColors.ink3),
-                suffix: _searchCtrl.text.isEmpty
-                    ? null
-                    : IconButton(
-                        icon: const Icon(Icons.close, size: 18),
-                        onPressed: () {
-                          _searchCtrl.clear();
-                          _load();
-                          setState(() {});
-                        },
-                      ),
-              ),
+          TextField(
+            controller: _searchCtrl,
+            onChanged: _onSearchChanged,
+            decoration: appInput(
+              hint: '搜索运单号',
+              prefix: const Icon(Icons.search, size: 20, color: AppColors.ink3),
+              suffix: _searchCtrl.text.isEmpty
+                  ? null
+                  : IconButton(
+                      icon: const Icon(Icons.close, size: 18),
+                      onPressed: () {
+                        _searchCtrl.clear();
+                        _load();
+                        setState(() {});
+                      },
+                    ),
             ),
-          ),
-          SizedBox(
-            height: 40,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: [
-                _buildFilterChip('全部', null),
-                _buildFilterChip('待认领', ParcelStatus.pending),
-                _buildFilterChip('已分配', ParcelStatus.assigned),
-                _buildFilterChip('异常件', ParcelStatus.exception),
-              ],
-            ),
-          ),
+          ).padding(left: 16, right: 16, bottom: 8),
+          ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            children: [
+              _buildFilterChip('全部', null),
+              _buildFilterChip('待认领', ParcelStatus.pending),
+              _buildFilterChip('已分配', ParcelStatus.assigned),
+              _buildFilterChip('异常件', ParcelStatus.exception),
+            ],
+          ).height(40),
           const SizedBox(height: 4),
           Expanded(
             child: _loading
@@ -208,35 +203,29 @@ class _InboxPageState extends State<InboxPage> {
   /// 状态筛选标签。
   Widget _buildFilterChip(String label, ParcelStatus? status) {
     final active = _filter == status;
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: GestureDetector(
-        onTap: () {
+    return Text(label)
+        .fontSize(12)
+        .fontWeight(FontWeight.w600)
+        .textColor(active ? Colors.white : AppColors.ink2)
+        .center()
+        .padding(horizontal: 14)
+        .ripple(
+          customBorder: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(999)),
+          ),
+        )
+        .gestures(onTap: () {
           setState(() => _filter = status);
           _loading = true;
           _load();
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: active ? AppColors.brand : AppColors.surface,
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(
-              color: active ? AppColors.brand : AppColors.line,
-            ),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: active ? Colors.white : AppColors.ink2,
-            ),
-          ),
-        ),
-      ),
-    );
+        })
+        .clipRRect(all: 999)
+        .decorated(
+          color: active ? AppColors.brand : AppColors.surface,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: active ? AppColors.brand : AppColors.line),
+        )
+        .padding(right: 8);
   }
 
   /// 单个包裹卡片。
@@ -245,96 +234,72 @@ class _InboxPageState extends State<InboxPage> {
     final accountName = parcel.accountId == null
         ? ''
         : _accountNames[parcel.accountId!] ?? '';
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: AppCard(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        borderColor: selected ? AppColors.brand : AppColors.line,
-        onTap: () => _toggle(parcel),
-        child: Row(
-          children: [
-            if (_selectionMode) ...[
-              Icon(
-                selected ? Icons.check_circle : Icons.circle_outlined,
-                size: 20,
-                color: selected ? AppColors.brand : AppColors.ink3,
-              ),
-              const SizedBox(width: 10),
+    return AppCard(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      borderColor: selected ? AppColors.brand : AppColors.line,
+      onTap: () => _toggle(parcel),
+      child: Row(
+        children: [
+          if (_selectionMode)
+            Icon(
+              selected ? Icons.check_circle : Icons.circle_outlined,
+              size: 20,
+              color: selected ? AppColors.brand : AppColors.ink3,
+            ).padding(right: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(parcel.trackingNo)
+                  .fontSize(14)
+                  .fontWeight(FontWeight.w600)
+                  .textColor(AppColors.ink)
+                  .letterSpacing(0.3),
+              Text(
+                [
+                  parcel.carrier.isEmpty ? '未知快递' : parcel.carrier,
+                  parcel.source.label,
+                  formatTime(parcel.scannedAt),
+                  if (accountName.isNotEmpty) accountName,
+                ].join(' · '),
+              ).fontSize(12).textColor(AppColors.ink3).padding(top: 4),
+              if (parcel.receiverTail.isNotEmpty)
+                Text('收件人尾号 ${parcel.receiverTail}')
+                    .fontSize(11)
+                    .textColor(AppColors.ink3)
+                    .padding(top: 2),
             ],
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    parcel.trackingNo,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.ink,
-                      letterSpacing: 0.3,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    [
-                      parcel.carrier.isEmpty ? '未知快递' : parcel.carrier,
-                      parcel.source.label,
-                      formatTime(parcel.scannedAt),
-                      if (accountName.isNotEmpty) accountName,
-                    ].join(' · '),
-                    style: const TextStyle(fontSize: 12, color: AppColors.ink3),
-                  ),
-                  if (parcel.receiverTail.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      '收件人尾号 ${parcel.receiverTail}',
-                      style: const TextStyle(fontSize: 11, color: AppColors.ink3),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            StatusChip(status: parcel.status, dense: true),
-          ],
-        ),
+          ).expanded(),
+          StatusChip(status: parcel.status, dense: true),
+        ],
       ),
-    );
+    ).padding(bottom: 8);
   }
 
   /// 多选状态下的底部操作栏。
   Widget _buildSelectionBar() {
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.line)),
-      ),
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-      child: SafeArea(
-        top: false,
-        child: Row(
-          children: [
-            Text(
-              '已选 ${_selected.length} 件',
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: AppColors.ink,
-              ),
-            ),
-            const Spacer(),
-            TextButton(
-              onPressed: _markException,
-              style: TextButton.styleFrom(foregroundColor: AppColors.danger),
-              child: const Text('标记异常'),
-            ),
-            const SizedBox(width: 8),
-            FilledButton(
-              onPressed: () => _openAssign(_selected.toList()),
-              child: const Text('分配归属'),
-            ),
-          ],
+    return Row(
+      children: [
+        Text('已选 ${_selected.length} 件')
+            .fontSize(13)
+            .fontWeight(FontWeight.w600)
+            .textColor(AppColors.ink),
+        const Spacer(),
+        TextButton(
+          onPressed: _markException,
+          style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+          child: const Text('标记异常'),
         ),
-      ),
-    );
+        FilledButton(
+          onPressed: () => _openAssign(_selected.toList()),
+          child: const Text('分配归属'),
+        ).padding(left: 8),
+      ],
+    )
+        .padding(left: 16, top: 10, right: 16, bottom: 10)
+        .safeArea(top: false)
+        .decorated(
+          color: AppColors.surface,
+          border: const Border(top: BorderSide(color: AppColors.line)),
+        );
   }
 }

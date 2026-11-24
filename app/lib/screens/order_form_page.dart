@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:styled_widget/styled_widget.dart';
 
 import '../core/app_events.dart';
 import '../core/db.dart';
@@ -80,13 +81,9 @@ class _OrderFormPageState extends State<OrderFormPage> {
                 itemBuilder: (_, index) {
                   final view = _accounts[index];
                   return ListTile(
-                    leading: Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: Color(view.platform.color),
-                        shape: BoxShape.circle,
-                      ),
+                    leading: const SizedBox(width: 8, height: 8).decorated(
+                      color: Color(view.platform.color),
+                      shape: BoxShape.circle,
                     ),
                     title: Text(view.title),
                     subtitle: view.account.owner.isEmpty
@@ -175,20 +172,17 @@ class _OrderFormPageState extends State<OrderFormPage> {
                       child: Row(
                         children: [
                           const Icon(Icons.badge_outlined,
-                              size: 20, color: AppColors.brandDeep),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              account.isEmpty ? '请选择平台账号' : account.first.title,
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: account.isEmpty
-                                    ? AppColors.ink3
-                                    : AppColors.ink,
-                              ),
-                            ),
-                          ),
+                                  size: 20, color: AppColors.brandDeep)
+                              .padding(right: 10),
+                          Text(
+                            account.isEmpty ? '请选择平台账号' : account.first.title,
+                          )
+                              .fontSize(14)
+                              .fontWeight(FontWeight.w500)
+                              .textColor(account.isEmpty
+                                  ? AppColors.ink3
+                                  : AppColors.ink)
+                              .expanded(),
                           const Icon(Icons.expand_more,
                               size: 20, color: AppColors.ink3),
                         ],
@@ -202,27 +196,21 @@ class _OrderFormPageState extends State<OrderFormPage> {
                         hint: '便于后续按商品反查包裹',
                       ),
                     ),
-                    const SizedBox(height: 10),
                     Row(
                       children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _orderNoCtrl,
-                            decoration: appInput(label: '平台订单号', hint: '可留空'),
-                          ),
-                        ),
+                        TextField(
+                          controller: _orderNoCtrl,
+                          decoration: appInput(label: '平台订单号', hint: '可留空'),
+                        ).expanded(),
                         const SizedBox(width: 10),
-                        Expanded(
-                          child: TextField(
-                            controller: _amountCtrl,
-                            keyboardType:
-                                const TextInputType.numberWithOptions(decimal: true),
-                            decoration: appInput(label: '金额（元）', hint: '仅记录'),
-                          ),
-                        ),
+                        TextField(
+                          controller: _amountCtrl,
+                          keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true),
+                          decoration: appInput(label: '金额（元）', hint: '仅记录'),
+                        ).expanded(),
                       ],
-                    ),
-                    const SizedBox(height: 10),
+                    ).padding(top: 10),
                     TextField(
                       controller: _addressCtrl,
                       maxLines: 2,
@@ -230,7 +218,7 @@ class _OrderFormPageState extends State<OrderFormPage> {
                         label: '收货地址',
                         hint: '第三方仓库或收件地址',
                       ),
-                    ),
+                    ).padding(top: 10),
                     const SectionHeader(title: '物流单号'),
                     TextField(
                       controller: _trackingCtrl,
@@ -240,19 +228,15 @@ class _OrderFormPageState extends State<OrderFormPage> {
                         hint: '平台发货后复制或扫码填入，可留空',
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      '填入的单号如果已经存在包裹，会自动建立归属；否则会在包裹到货扫码时自动合并。',
-                      style: TextStyle(fontSize: 11, color: AppColors.ink3, height: 1.5),
-                    ),
-                    const SizedBox(height: 22),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton(
-                        onPressed: _saving ? null : _save,
-                        child: Text(_saving ? '保存中…' : '保存订单'),
-                      ),
-                    ),
+                    const Text('填入的单号如果已经存在包裹，会自动建立归属；否则会在包裹到货扫码时自动合并。')
+                        .fontSize(11)
+                        .textColor(AppColors.ink3)
+                        .textStyle(const TextStyle(height: 1.5))
+                        .padding(top: 8),
+                    FilledButton(
+                      onPressed: _saving ? null : _save,
+                      child: Text(_saving ? '保存中…' : '保存订单'),
+                    ).width(double.infinity).padding(top: 22),
                   ],
                 ),
     );

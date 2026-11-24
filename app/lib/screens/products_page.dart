@@ -250,43 +250,38 @@ class _ProductsPageState extends State<ProductsPage> {
     );
   }
 
-  /// 商品卡片：左滑出现「编辑 / 删除」，点击进入编辑。
+  /// 商品卡片：左滑出现「编辑 / 删除」，按钮与卡片同高贴合，点击卡片不进入编辑。
   Widget _buildCard(ProductModel product) {
-    return Slidable(
-      key: ValueKey(product.id),
-      groupTag: 'products',
-      endActionPane: ActionPane(
-        motion: const ScrollMotion(),
-        extentRatio: 0.42,
-        children: [
-          SlidableAction(
-            onPressed: (_) => _openDialog(editing: product),
-            backgroundColor: AppColors.brand,
-            foregroundColor: Colors.white,
-            borderRadius: const BorderRadius.horizontal(
-              left: Radius.circular(kCardRadius),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Slidable(
+        key: ValueKey(product.id),
+        groupTag: 'products',
+        endActionPane: ActionPane(
+          motion: const ScrollMotion(),
+          extentRatio: 0.38,
+          children: [
+            SlidableAction(
+              onPressed: (_) => _openDialog(editing: product),
+              backgroundColor: AppColors.brand,
+              foregroundColor: Colors.white,
+              icon: Icons.edit_outlined,
+              label: '编辑',
+              labelStyle: const TextStyle(fontSize: 12),
             ),
-            icon: Icons.edit_outlined,
-            label: '编辑',
-            labelStyle: const TextStyle(fontSize: 12),
-          ),
-          SlidableAction(
-            onPressed: (_) => _delete(product),
-            backgroundColor: AppColors.danger,
-            foregroundColor: Colors.white,
-            borderRadius: const BorderRadius.horizontal(
-              right: Radius.circular(kCardRadius),
+            SlidableAction(
+              onPressed: (_) => _delete(product),
+              backgroundColor: AppColors.danger,
+              foregroundColor: Colors.white,
+              icon: Icons.delete_outline,
+              label: '删除',
+              labelStyle: const TextStyle(fontSize: 12),
             ),
-            icon: Icons.delete_outline,
-            label: '删除',
-            labelStyle: const TextStyle(fontSize: 12),
-          ),
-        ],
-      ),
-      child: AppCard(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        onTap: () => _openDialog(editing: product),
-        child: Row(
+          ],
+        ),
+        child: AppCard(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
           children: [
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -327,6 +322,7 @@ class _ProductsPageState extends State<ProductsPage> {
           ],
         ),
       ),
-    ).padding(bottom: 8);
+      ),
+    );
   }
 }

@@ -267,27 +267,26 @@ class _InboxPageState extends State<InboxPage> {
     final accountName = parcel.accountId == null
         ? ''
         : _accountNames[parcel.accountId!] ?? '';
-    return Slidable(
-      key: ValueKey(parcel.id),
-      groupTag: 'inbox',
-      endActionPane: ActionPane(
-        motion: const ScrollMotion(),
-        extentRatio: 0.24,
-        children: [
-          SlidableAction(
-            onPressed: (_) => _deleteParcel(parcel),
-            backgroundColor: AppColors.danger,
-            foregroundColor: Colors.white,
-            borderRadius: const BorderRadius.horizontal(
-              right: Radius.circular(kCardRadius),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Slidable(
+        key: ValueKey(parcel.id),
+        groupTag: 'inbox',
+        endActionPane: ActionPane(
+          motion: const ScrollMotion(),
+          extentRatio: 0.24,
+          children: [
+            SlidableAction(
+              onPressed: (_) => _deleteParcel(parcel),
+              backgroundColor: AppColors.danger,
+              foregroundColor: Colors.white,
+              icon: Icons.delete_outline,
+              label: '删除',
+              labelStyle: const TextStyle(fontSize: 12),
             ),
-            icon: Icons.delete_outline,
-            label: '删除',
-            labelStyle: const TextStyle(fontSize: 12),
-          ),
-        ],
-      ),
-      child: AppCard(
+          ],
+        ),
+        child: AppCard(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         borderColor: selected ? AppColors.brand : AppColors.line,
         onTap: () => _toggle(parcel),
@@ -326,7 +325,8 @@ class _InboxPageState extends State<InboxPage> {
           ],
         ),
       ),
-    ).padding(bottom: 8);
+      ),
+    );
   }
 
   /// 多选状态下的底部操作栏。

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:styled_widget/styled_widget.dart';
 
 import '../core/app_events.dart';
@@ -127,6 +128,36 @@ class _InboxPageState extends State<InboxPage> {
     bumpDbRevision();
   }
 
+  /// 删除一条误扫包裹（二次确认）。
+  ///
+  /// 参数：[parcel] 目标包裹。
+  Future<void> _deleteParcel(ParcelModel parcel) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('删除包裹'),
+        content: Text('确认从待认领池删除运单 ${parcel.trackingNo}？删除后不可恢复。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await AppDatabase.instance.deleteParcel(parcel.id);
+    if (!mounted) return;
+    setState(() => _selected.remove(parcel.id));
+    showToast(context, '已删除 ${parcel.trackingNo}');
+    bumpDbRevision();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -186,11 +217,13 @@ class _InboxPageState extends State<InboxPage> {
                       )
                     : RefreshIndicator(
                         onRefresh: _load,
-                        child: ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
-                          itemCount: _items.length,
-                          itemBuilder: (context, index) =>
-                              _buildItem(_items[index]),
+                        child: SlidableAutoCloseBehavior(
+                          child: ListView.builder(
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+                            itemCount: _items.length,
+                            itemBuilder: (context, index) =>
+                                _buildItem(_items[index]),
+                          ),
                         ),
                       ),
           ),
@@ -228,49 +261,70 @@ class _InboxPageState extends State<InboxPage> {
         .padding(right: 8);
   }
 
-  /// 单个包裹卡片。
+  /// 单个包裹卡片：左滑出现「删除」。
   Widget _buildItem(ParcelModel parcel) {
     final selected = _selected.contains(parcel.id);
     final accountName = parcel.accountId == null
         ? ''
         : _accountNames[parcel.accountId!] ?? '';
-    return AppCard(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      borderColor: selected ? AppColors.brand : AppColors.line,
-      onTap: () => _toggle(parcel),
-      child: Row(
+    return Slidable(
+      key: ValueKey(parcel.id),
+      groupTag: 'inbox',
+      endActionPane: ActionPane(
+        motion: const ScrollMotion(),
+        extentRatio: 0.24,
         children: [
-          if (_selectionMode)
-            Icon(
-              selected ? Icons.check_circle : Icons.circle_outlined,
-              size: 20,
-              color: selected ? AppColors.brand : AppColors.ink3,
-            ).padding(right: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(parcel.trackingNo)
-                  .fontSize(14)
-                  .fontWeight(FontWeight.w600)
-                  .textColor(AppColors.ink)
-                  .letterSpacing(0.3),
-              Text(
-                [
-                  parcel.carrier.isEmpty ? '未知快递' : parcel.carrier,
-                  parcel.source.label,
-                  formatTime(parcel.scannedAt),
-                  if (accountName.isNotEmpty) accountName,
-                ].join(' · '),
-              ).fontSize(12).textColor(AppColors.ink3).padding(top: 4),
-              if (parcel.receiverTail.isNotEmpty)
-                Text('收件人尾号 ${parcel.receiverTail}')
-                    .fontSize(11)
-                    .textColor(AppColors.ink3)
-                    .padding(top: 2),
-            ],
-          ).expanded(),
-          StatusChip(status: parcel.status, dense: true),
+          SlidableAction(
+            onPressed: (_) => _deleteParcel(parcel),
+            backgroundColor: AppColors.danger,
+            foregroundColor: Colors.white,
+            borderRadius: const BorderRadius.horizontal(
+              right: Radius.circular(kCardRadius),
+            ),
+            icon: Icons.delete_outline,
+            label: '删除',
+            labelStyle: const TextStyle(fontSize: 12),
+          ),
         ],
+      ),
+      child: AppCard(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        borderColor: selected ? AppColors.brand : AppColors.line,
+        onTap: () => _toggle(parcel),
+        child: Row(
+          children: [
+            if (_selectionMode)
+              Icon(
+                selected ? Icons.check_circle : Icons.circle_outlined,
+                size: 20,
+                color: selected ? AppColors.brand : AppColors.ink3,
+              ).padding(right: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(parcel.trackingNo)
+                    .fontSize(14)
+                    .fontWeight(FontWeight.w600)
+                    .textColor(AppColors.ink)
+                    .letterSpacing(0.3),
+                Text(
+                  [
+                    parcel.carrier.isEmpty ? '未知快递' : parcel.carrier,
+                    parcel.source.label,
+                    formatTime(parcel.scannedAt),
+                    if (accountName.isNotEmpty) accountName,
+                  ].join(' · '),
+                ).fontSize(12).textColor(AppColors.ink3).padding(top: 4),
+                if (parcel.receiverTail.isNotEmpty)
+                  Text('收件人尾号 ${parcel.receiverTail}')
+                      .fontSize(11)
+                      .textColor(AppColors.ink3)
+                      .padding(top: 2),
+              ],
+            ).expanded(),
+            StatusChip(status: parcel.status, dense: true),
+          ],
+        ),
       ),
     ).padding(bottom: 8);
   }
@@ -286,13 +340,17 @@ class _InboxPageState extends State<InboxPage> {
         const SizedBox(width: 12),
         TextButton(
           onPressed: _markException,
-          style: TextButton.styleFrom(foregroundColor: AppColors.danger),
-          child: const Text('标记异常'),
+          style: TextButton.styleFrom(
+            foregroundColor: AppColors.danger,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            minimumSize: const Size(0, 44),
+          ),
+          child: const Text('标记异常', maxLines: 1, softWrap: false),
         ).expanded(),
         const SizedBox(width: 8),
         FilledButton(
           onPressed: () => _openAssign(_selected.toList()),
-          child: const Text('分配归属'),
+          child: const Text('分配归属', maxLines: 1, softWrap: false),
         ).expanded(),
       ],
     )

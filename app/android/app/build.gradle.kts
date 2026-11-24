@@ -48,3 +48,9 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // ML Kit 中文文本识别模型：插件为 compileOnly，需要应用侧显式引入，否则运行时会
+    // 抛 NoClassDefFoundError（ChineseTextRecognizerOptions）。
+    implementation("com.google.mlkit:text-recognition-chinese:16.0.1")
+}

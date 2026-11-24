@@ -53,6 +53,8 @@
 | 2026-11-24 | 实机冒烟（Android 14，1080×1920） | 工作台/台账/待认领/扫码/面单/代下单 6 个页面全部跑通：新增账号、手输单号入库、批量分配、订单创建后扫码自动关联，状态与计数均正确刷新 |
 | 2026-11-24 | 实机缺陷修复 | 面单 OCR 崩溃（插件对中文模型是 `compileOnly`，需应用侧显式依赖，已补 `text-recognition-chinese:16.0.1`）；扫码页「手输单号」按钮换行、面单字段标签截断已修 |
 | 2026-11-24 | 修复后回归 | `flutter analyze` 0 问题、7 个单测全通过、APK 212.6MB（中文模型 +约18MB）；实机 OCR 模型成功加载并输出中文文本 |
+| 2026-11-25 | UI 全量改用组件库 `styled_widget` | 通用组件（AppCard/StatusChip/AppPill/EmptyState/SectionHeader）与 8 个页面全部改为链式扩展写法，视觉与交互逻辑保持不变；`flutter analyze` 0 问题、7 个单测通过 |
+| 2026-11-25 | 真机回归（Android 14，1200×2670，3x） | 工作台/待认领/台账/扫码/面单/代下单 6 页逐一截图验证；完整走通「手输入库 → 待认领 → 多选 → 分配账号 → 已分配」链路，计数与状态标签刷新正确；修复链式调用中 `Expanded` 与 `Padding` 顺序错误导致的扫描列表空白 |
 
 ## 6. 决策记录
 
@@ -65,6 +67,7 @@
 | 服务端存储 | P1 内嵌 SQLite，P4 迁 PostgreSQL 16；文件存本地目录，不用 Redis/MinIO | 2026-11-24 |
 | 端侧本地库 | SQLite + **sqflite**（不用 drift，避免代码生成与构建链复杂度） | 2026-11-24 |
 | 仓库形态 | 单仓多工程：`app/`（Flutter 移动端），后续 `server/`、`web/`；仅本地 Git，不推远端 | 2026-11-24 |
+| UI 构建方式 | 统一使用 `styled_widget` 0.4.1 链式扩展（padding/decorated/ripple/gestures 等）替代手写 Padding/Container；`Expanded` 必须作为 Row/Column 的**直接子节点**（链式里放最后），弹性布局处保留必要 `SizedBox` 作为间隔 | 2026-11-25 |
 
 ## 7. 待决策事项
 

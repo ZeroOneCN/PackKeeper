@@ -1,43 +1,62 @@
 import 'package:flutter/material.dart';
+import 'package:styled_widget/styled_widget.dart';
 
 import '../core/models.dart';
 import '../core/theme.dart';
 
+/// 卡片圆角半径。
+const double kCardRadius = 14;
+
 /// 统一的白色圆角卡片。
+///
+/// 参数：[child] 卡片内容；[padding] 内边距；[onTap] 点击回调；
+/// [color] 背景色；[borderColor] 边框色。
+/// 返回：链式构造的圆角卡片（可点击时带水波纹）。
 class AppCard extends StatelessWidget {
   const AppCard({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.all(16),
+    EdgeInsetsGeometry padding = const EdgeInsets.all(16),
     this.onTap,
     this.color,
     this.borderColor,
-  });
+  }) : contentPadding = padding;
 
   final Widget child;
-  final EdgeInsetsGeometry padding;
+
+  /// 内容内边距（字段名避开 `padding` 扩展方法，便于链式调用）。
+  final EdgeInsetsGeometry contentPadding;
   final VoidCallback? onTap;
   final Color? color;
   final Color? borderColor;
 
   @override
   Widget build(BuildContext context) {
-    final radius = BorderRadius.circular(14);
-    final body = Padding(padding: padding, child: child);
-    return Container(
-      decoration: BoxDecoration(
-        color: color ?? AppColors.surface,
-        borderRadius: radius,
-        border: Border.all(color: borderColor ?? AppColors.line),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: onTap == null
-          ? body
-          : Material(
-              color: Colors.transparent,
-              child: InkWell(onTap: onTap, child: body),
-            ),
+    final inset = contentPadding.resolve(Directionality.of(context));
+    final border = Border.all(color: borderColor ?? AppColors.line);
+
+    Widget card = child.padding(
+      left: inset.left,
+      top: inset.top,
+      right: inset.right,
+      bottom: inset.bottom,
     );
+    if (onTap != null) {
+      card = card
+          .ripple(
+            customBorder: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(kCardRadius)),
+            ),
+          )
+          .gestures(onTap: onTap);
+    }
+    return card
+        .clipRRect(all: kCardRadius)
+        .decorated(
+          color: color ?? AppColors.surface,
+          border: border,
+          borderRadius: BorderRadius.circular(kCardRadius),
+        );
   }
 }
 
@@ -58,22 +77,16 @@ class StatusChip extends StatelessWidget {
       ParcelStatus.done => (AppColors.ink2, AppColors.surface2),
       ParcelStatus.exception => (AppColors.danger, AppColors.dangerSoft),
     };
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: dense ? 7 : 9, vertical: dense ? 2 : 3),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        status.label,
-        style: TextStyle(
-          color: fg,
-          fontSize: dense ? 11 : 12,
-          fontWeight: FontWeight.w600,
-          height: 1.2,
-        ),
-      ),
-    );
+    return Text(status.label)
+        .textColor(fg)
+        .fontSize(dense ? 11 : 12)
+        .fontWeight(FontWeight.w600)
+        .textStyle(const TextStyle(height: 1.2))
+        .padding(horizontal: dense ? 7 : 9, vertical: dense ? 2 : 3)
+        .decorated(
+          color: bg,
+          borderRadius: BorderRadius.circular(999),
+        );
   }
 }
 
@@ -86,18 +99,16 @@ class AppPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: AppColors.surface2,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: AppColors.line),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w500),
-      ),
-    );
+    return Text(text)
+        .fontSize(11)
+        .fontWeight(FontWeight.w500)
+        .textColor(color)
+        .padding(horizontal: 8, vertical: 2)
+        .decorated(
+          color: AppColors.surface2,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: AppColors.line),
+        );
   }
 }
 
@@ -118,46 +129,28 @@ class EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 48),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 64,
-              height: 64,
-              decoration: const BoxDecoration(
-                color: AppColors.surface2,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, size: 28, color: AppColors.ink3),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: AppColors.ink,
-              ),
-            ),
-            if (description.isNotEmpty) ...[
-              const SizedBox(height: 6),
-              Text(
-                description,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 13, color: AppColors.ink3, height: 1.5),
-              ),
-            ],
-            if (action != null) ...[
-              const SizedBox(height: 16),
-              action!,
-            ],
-          ],
-        ),
-      ),
-    );
+    final children = <Widget>[
+      Icon(icon, size: 28, color: AppColors.ink3)
+          .center()
+          .constrained(width: 64, height: 64)
+          .decorated(color: AppColors.surface2, shape: BoxShape.circle),
+      Text(title)
+          .fontSize(15)
+          .fontWeight(FontWeight.w600)
+          .textColor(AppColors.ink)
+          .padding(top: 16),
+      if (description.isNotEmpty)
+        Text(description)
+            .fontSize(13)
+            .textColor(AppColors.ink3)
+            .textStyle(const TextStyle(height: 1.5))
+            .textAlignment(TextAlign.center)
+            .padding(top: 6),
+      if (action != null) action!.padding(top: 16),
+    ];
+    return Column(mainAxisSize: MainAxisSize.min, children: children)
+        .padding(horizontal: 32, vertical: 48)
+        .center();
   }
 }
 
@@ -170,23 +163,16 @@ class SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 20, 4, 10),
-      child: Row(
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: AppColors.ink,
-            ),
-          ),
-          const Spacer(),
-          ?trailing,
-        ],
-      ),
-    );
+    return Row(
+      children: [
+        Text(title)
+            .fontSize(14)
+            .fontWeight(FontWeight.w600)
+            .textColor(AppColors.ink),
+        const Spacer(),
+        ?trailing,
+      ],
+    ).padding(left: 4, top: 20, right: 4, bottom: 10);
   }
 }
 

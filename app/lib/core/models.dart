@@ -163,6 +163,61 @@ class ParcelModel {
   }
 }
 
+/// 订单履约路径：先入仓再转发，或平台直送收件人。
+enum OrderRoute {
+  warehouse('仓库'),
+  direct('直送');
+
+  const OrderRoute(this.label);
+
+  /// 中文展示名。
+  final String label;
+
+  /// 从数据库字符串还原路径（旧数据默认仓库）。
+  static OrderRoute fromDb(String value) {
+    return OrderRoute.values.firstWhere(
+      (e) => e.name == value,
+      orElse: () => OrderRoute.warehouse,
+    );
+  }
+}
+
+/// 商品库条目：记录规格、采购成本与售价，用于利润统计。
+class ProductModel {
+  const ProductModel({
+    required this.id,
+    required this.name,
+    required this.spec,
+    required this.cost,
+    required this.price,
+    required this.note,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String name;
+  final String spec;
+  final double? cost;
+  final double? price;
+  final String note;
+  final int createdAt;
+
+  /// 单件利润（售价 - 成本），缺值时按 0 计。
+  double get profit => (price ?? 0) - (cost ?? 0);
+
+  factory ProductModel.fromMap(Map<String, Object?> map) {
+    return ProductModel(
+      id: map['id'] as String,
+      name: map['name'] as String,
+      spec: (map['spec'] as String?) ?? '',
+      cost: (map['cost'] as num?)?.toDouble(),
+      price: (map['price'] as num?)?.toDouble(),
+      note: (map['note'] as String?) ?? '',
+      createdAt: (map['created_at'] as int?) ?? 0,
+    );
+  }
+}
+
 /// 代下单记录。
 class OrderModel {
   const OrderModel({
@@ -175,6 +230,9 @@ class OrderModel {
     required this.trackingNo,
     required this.status,
     required this.orderedAt,
+    required this.productId,
+    required this.cost,
+    required this.route,
   });
 
   final String id;
@@ -186,6 +244,12 @@ class OrderModel {
   final String trackingNo;
   final String status;
   final int orderedAt;
+  final String? productId;
+  final double? cost;
+  final OrderRoute route;
+
+  /// 单笔利润（销售额 - 成本），缺值时按 0 计。
+  double get profit => (amount ?? 0) - (cost ?? 0);
 
   factory OrderModel.fromMap(Map<String, Object?> map) {
     return OrderModel(
@@ -198,8 +262,43 @@ class OrderModel {
       trackingNo: (map['tracking_no'] as String?) ?? '',
       status: (map['status'] as String?) ?? 'created',
       orderedAt: (map['ordered_at'] as int?) ?? 0,
+      productId: map['product_id'] as String?,
+      cost: (map['cost'] as num?)?.toDouble(),
+      route: OrderRoute.fromDb((map['route'] as String?) ?? 'warehouse'),
     );
   }
+}
+
+/// 订单 + 账号/平台信息的联表视图。
+class OrderView {
+  const OrderView({
+    required this.order,
+    required this.accountAlias,
+    required this.platformName,
+  });
+
+  final OrderModel order;
+  final String accountAlias;
+  final String platformName;
+
+  /// 展示文案：平台 · 账号别名。
+  String get accountTitle => '$platformName · $accountAlias';
+}
+
+/// 按时间范围聚合的经营数据。
+class BusinessSummary {
+  const BusinessSummary({
+    required this.orderCount,
+    required this.sales,
+    required this.cost,
+  });
+
+  final int orderCount;
+  final double sales;
+  final double cost;
+
+  /// 利润 = 销售额 - 成本。
+  double get profit => sales - cost;
 }
 
 /// 首页统计快照。

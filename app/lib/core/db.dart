@@ -36,11 +36,34 @@ class AppDatabase {
     final path = p.join(dir, 'packkeeper.db');
     _db = await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
       onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
     );
     return _db!;
+  }
+
+  /// 数据库升级：v1 → v2 新增商品库与订单的成本/履约路径字段。
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('''
+        CREATE TABLE products (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          spec TEXT NOT NULL DEFAULT '',
+          cost REAL,
+          price REAL,
+          note TEXT NOT NULL DEFAULT '',
+          created_at INTEGER NOT NULL
+        )
+      ''');
+      await db.execute('ALTER TABLE orders ADD COLUMN product_id TEXT');
+      await db.execute('ALTER TABLE orders ADD COLUMN cost REAL');
+      await db.execute(
+        "ALTER TABLE orders ADD COLUMN route TEXT NOT NULL DEFAULT 'warehouse'",
+      );
+    }
   }
 
   /// 建表并写入平台种子数据。
@@ -97,7 +120,21 @@ class AppDatabase {
         status TEXT NOT NULL DEFAULT 'created',
         ordered_at INTEGER NOT NULL,
         created_at INTEGER NOT NULL,
+        product_id TEXT,
+        cost REAL,
+        route TEXT NOT NULL DEFAULT 'warehouse',
         FOREIGN KEY (account_id) REFERENCES accounts (id)
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE products (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        spec TEXT NOT NULL DEFAULT '',
+        cost REAL,
+        price REAL,
+        note TEXT NOT NULL DEFAULT '',
+        created_at INTEGER NOT NULL
       )
     ''');
     await db.execute('''
@@ -566,7 +603,8 @@ class AppDatabase {
   /// 新增代下单记录；若物流单号已存在包裹则自动关联。
   ///
   /// 参数：[accountId] 下单账号；[title] 商品标题；[amount] 金额；
-  /// [platformOrderNo] 平台订单号；[addressText] 收货地址；[trackingNo] 物流单号。
+  /// [platformOrderNo] 平台订单号；[addressText] 收货地址；[trackingNo] 物流单号；
+  /// [productId] 关联商品；[cost] 采购成本；[route] 履约路径。
   /// 返回：订单主键。
   Future<String> addOrder({
     required String accountId,
@@ -575,6 +613,9 @@ class AppDatabase {
     String platformOrderNo = '',
     String addressText = '',
     String trackingNo = '',
+    String? productId,
+    double? cost,
+    OrderRoute route = OrderRoute.warehouse,
   }) async {
     final db = await database;
     final id = _uuid.v4();
@@ -591,6 +632,9 @@ class AppDatabase {
       'status': 'created',
       'ordered_at': now,
       'created_at': now,
+      'product_id': productId,
+      'cost': cost,
+      'route': route.name,
     });
     await _audit(db, 'order.create', 'order', id, info.normalized);
 
@@ -645,6 +689,324 @@ class AppDatabase {
   int _countOf(List<Map<String, Object?>> rows) {
     if (rows.isEmpty) return 0;
     return (rows.first['c'] as int?) ?? 0;
+  }
+
+  /// 商品库列表，按创建时间倒序。
+  ///
+  /// 参数：[keyword] 可选商品名/规格模糊搜索。
+  Future<List<ProductModel>> products({String? keyword}) async {
+    final db = await database;
+    final where = <String>[];
+    final args = <Object?>[];
+    if (keyword != null && keyword.trim().isNotEmpty) {
+      where.add('(name LIKE ? OR spec LIKE ?)');
+      final like = '%${keyword.trim()}%';
+      args.add(like);
+      args.add(like);
+    }
+    final rows = await db.query(
+      'products',
+      where: where.isEmpty ? null : where.join(' AND '),
+      whereArgs: args.isEmpty ? null : args,
+      orderBy: 'created_at DESC',
+    );
+    return rows.map(ProductModel.fromMap).toList();
+  }
+
+  /// 新增商品。
+  ///
+  /// 参数：[name] 商品名；[spec] 规格；[cost] 采购成本；[price] 售价；
+  /// [note] 备注。返回新商品主键。
+  Future<String> addProduct({
+    required String name,
+    String spec = '',
+    double? cost,
+    double? price,
+    String note = '',
+  }) async {
+    final db = await database;
+    final id = _uuid.v4();
+    await db.insert('products', {
+      'id': id,
+      'name': name.trim(),
+      'spec': spec.trim(),
+      'cost': cost,
+      'price': price,
+      'note': note.trim(),
+      'created_at': DateTime.now().millisecondsSinceEpoch,
+    });
+    await _audit(db, 'product.create', 'product', id, name.trim());
+    return id;
+  }
+
+  /// 更新商品信息。
+  ///
+  /// 参数：[id] 商品主键；其余字段含义同 [addProduct]。
+  Future<void> updateProduct({
+    required String id,
+    required String name,
+    String spec = '',
+    double? cost,
+    double? price,
+    String note = '',
+  }) async {
+    final db = await database;
+    await db.update(
+      'products',
+      {
+        'name': name.trim(),
+        'spec': spec.trim(),
+        'cost': cost,
+        'price': price,
+        'note': note.trim(),
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    await _audit(db, 'product.update', 'product', id, name.trim());
+  }
+
+  /// 删除商品；已引用该商品的订单会保留并把商品字段置空。
+  ///
+  /// 参数：[id] 商品主键。
+  Future<void> deleteProduct(String id) async {
+    final db = await database;
+    final rows = await db.query(
+      'products',
+      columns: ['name'],
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (rows.isEmpty) return;
+    await db.transaction((txn) async {
+      await txn.update(
+        'orders',
+        {'product_id': null},
+        where: 'product_id = ?',
+        whereArgs: [id],
+      );
+      await txn.delete('products', where: 'id = ?', whereArgs: [id]);
+    });
+    await _audit(
+      db,
+      'product.delete',
+      'product',
+      id,
+      (rows.first['name'] as String?) ?? '',
+    );
+  }
+
+  /// 统计某个时间起点之后的订单经营数据（销售额、成本、利润）。
+  ///
+  /// 参数：[start] 统计起始时间（含）。
+  Future<BusinessSummary> orderSummary(DateTime start) async {
+    final db = await database;
+    final rows = await db.rawQuery(
+      '''
+      SELECT COUNT(*) AS c,
+             COALESCE(SUM(amount), 0) AS sales,
+             COALESCE(SUM(cost), 0) AS cost
+      FROM orders WHERE ordered_at >= ?
+      ''',
+      [start.millisecondsSinceEpoch],
+    );
+    if (rows.isEmpty) {
+      return const BusinessSummary(orderCount: 0, sales: 0, cost: 0);
+    }
+    final row = rows.first;
+    return BusinessSummary(
+      orderCount: (row['c'] as int?) ?? 0,
+      sales: ((row['sales'] as num?) ?? 0).toDouble(),
+      cost: ((row['cost'] as num?) ?? 0).toDouble(),
+    );
+  }
+
+  /// 待补物流单号的订单（列表带账号与平台信息）。
+  ///
+  /// 参数：[limit] 返回上限。
+  Future<List<OrderView>> pendingTrackingOrders({int limit = 20}) async {
+    final db = await database;
+    final rows = await db.rawQuery(
+      '''
+      SELECT o.*, a.alias AS account_alias, p.name AS platform_name
+      FROM orders o
+      JOIN accounts a ON a.id = o.account_id
+      JOIN platforms p ON p.id = a.platform_id
+      WHERE o.tracking_no = ''
+      ORDER BY o.created_at DESC
+      LIMIT ?
+      ''',
+      [limit],
+    );
+    return rows.map((row) {
+      return OrderView(
+        order: OrderModel.fromMap(row),
+        accountAlias: (row['account_alias'] as String?) ?? '',
+        platformName: (row['platform_name'] as String?) ?? '',
+      );
+    }).toList();
+  }
+
+  /// 查询某物流单号已被多少笔订单占用。
+  ///
+  /// 参数：[trackingNo] 原始物流单号（内部会做规范化）。
+  Future<int> orderCountByTracking(String trackingNo) async {
+    final db = await database;
+    final normalized = parseTracking(trackingNo).normalized;
+    if (normalized.isEmpty) return 0;
+    final rows = await db.rawQuery(
+      'SELECT COUNT(*) AS c FROM orders WHERE tracking_no = ?',
+      [normalized],
+    );
+    return _countOf(rows);
+  }
+
+  /// 为订单补录物流单号；若该单号已有包裹则同步建立归属。
+  ///
+  /// 参数：[orderId] 订单主键；[trackingNo] 物流单号。
+  Future<void> updateOrderTracking({
+    required String orderId,
+    required String trackingNo,
+  }) async {
+    final db = await database;
+    final info = parseTracking(trackingNo);
+    final rows = await db.query(
+      'orders',
+      columns: ['account_id'],
+      where: 'id = ?',
+      whereArgs: [orderId],
+      limit: 1,
+    );
+    if (rows.isEmpty) return;
+    final accountId = rows.first['account_id'] as String;
+    await db.update(
+      'orders',
+      {'tracking_no': info.normalized},
+      where: 'id = ?',
+      whereArgs: [orderId],
+    );
+    await _audit(db, 'order.tracking', 'order', orderId, info.normalized);
+    if (info.normalized.isEmpty) return;
+    final parcel = await findByTracking(info.normalized);
+    if (parcel == null) return;
+    await db.update(
+      'parcels',
+      {
+        'account_id': accountId,
+        'order_id': orderId,
+        'status': ParcelStatus.assigned.name,
+      },
+      where: 'id = ?',
+      whereArgs: [parcel.id],
+    );
+    await _audit(db, 'parcel.assigned_by_order', 'parcel', parcel.id, orderId);
+  }
+
+  /// 导出全部业务表为可 JSON 序列化的备份数据。
+  ///
+  /// 返回：包含版本号与各表记录的 Map，可直接 `jsonEncode` 落盘。
+  Future<Map<String, Object?>> exportAll() async {
+    final db = await database;
+    final data = <String, Object?>{};
+    for (final table in const [
+      'platforms',
+      'accounts',
+      'products',
+      'parcels',
+      'orders',
+      'scan_events',
+      'audit_logs',
+    ]) {
+      data[table] = await db.query(table);
+    }
+    return {
+      'app': 'packkeeper',
+      'version': 2,
+      'exported_at': DateTime.now().millisecondsSinceEpoch,
+      'data': data,
+    };
+  }
+
+  /// 覆盖导入备份数据（事务内先清空业务表再按外键顺序写入）。
+  ///
+  /// 参数：[payload] 由 [exportAll] 生成的 JSON 反序列化结果。
+  /// 返回：导入的账号/订单/包裹数量。
+  /// 当结构不合法时抛出 [FormatException]。
+  Future<({int accounts, int orders, int parcels})> importAll(
+    Map<String, Object?> payload,
+  ) async {
+    final data = payload['data'];
+    if (data is! Map) {
+      throw const FormatException('备份文件缺少 data 字段');
+    }
+    final tables = <String, List<Map<String, Object?>>>{};
+    for (final table in const [
+      'platforms',
+      'accounts',
+      'products',
+      'parcels',
+      'orders',
+      'scan_events',
+      'audit_logs',
+    ]) {
+      final raw = data[table];
+      if (raw is! List) continue;
+      tables[table] = raw
+          .whereType<Map>()
+          .map((row) => row.map((k, v) => MapEntry(k.toString(), v)))
+          .toList();
+    }
+    if (!tables.containsKey('platforms') && !tables.containsKey('accounts')) {
+      throw const FormatException('备份文件缺少平台或账号数据');
+    }
+
+    final db = await database;
+    await db.transaction((txn) async {
+      for (final table in const [
+        'parcels',
+        'orders',
+        'products',
+        'accounts',
+        'platforms',
+        'scan_events',
+        'audit_logs',
+      ]) {
+        await txn.delete(table);
+      }
+      for (final table in const [
+        'platforms',
+        'products',
+        'accounts',
+        'parcels',
+        'orders',
+        'scan_events',
+        'audit_logs',
+      ]) {
+        final rows = tables[table];
+        if (rows == null || rows.isEmpty) continue;
+        final batch = txn.batch();
+        for (final row in rows) {
+          batch.insert(table, row);
+        }
+        await batch.commit(noResult: true);
+      }
+      await txn.insert('audit_logs', {
+        'action': 'data.import',
+        'target_type': 'database',
+        'target_id': 'all',
+        'detail':
+            'accounts=${tables['accounts']?.length ?? 0}, '
+                'orders=${tables['orders']?.length ?? 0}, '
+                'parcels=${tables['parcels']?.length ?? 0}',
+        'ts': DateTime.now().millisecondsSinceEpoch,
+      });
+    });
+    return (
+      accounts: tables['accounts']?.length ?? 0,
+      orders: tables['orders']?.length ?? 0,
+      parcels: tables['parcels']?.length ?? 0,
+    );
   }
 
   /// 写一条审计日志。

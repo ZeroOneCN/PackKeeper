@@ -7,6 +7,8 @@ import '../core/models.dart';
 import '../core/theme.dart';
 import '../widgets/common.dart';
 import 'order_form_page.dart';
+import 'products_page.dart';
+import 'backup_sheet.dart';
 import 'scan_page.dart';
 import 'waybill_page.dart';
 
@@ -24,6 +26,9 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   DashboardStats? _stats;
   List<ParcelModel> _recent = const [];
+  List<OrderView> _pendingOrders = const [];
+  BusinessSummary? _summary;
+  _Range _range = _Range.thisMonth;
 
   @override
   void initState() {
@@ -38,15 +43,19 @@ class _DashboardPageState extends State<DashboardPage> {
     super.dispose();
   }
 
-  /// 加载首页统计数据与最近包裹。
+  /// 加载首页统计、经营概览、待补单号与最近包裹。
   Future<void> _load() async {
     final db = AppDatabase.instance;
     final stats = await db.stats();
     final recent = await db.recentParcels();
+    final summary = await db.orderSummary(_range.start(DateTime.now()));
+    final pendingOrders = await db.pendingTrackingOrders(limit: 5);
     if (!mounted) return;
     setState(() {
       _stats = stats;
       _recent = recent;
+      _summary = summary;
+      _pendingOrders = pendingOrders;
     });
   }
 
@@ -75,6 +84,86 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
+  /// 打开商品库。
+  Future<void> _openProducts() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const ProductsPage()),
+    );
+  }
+
+  /// 为订单补录物流单号（已有同号包裹会同步归属）。
+  ///
+  /// 参数：[view] 待补单号的订单。
+  Future<void> _fillTracking(OrderView view) async {
+    final controller = TextEditingController();
+    final submitted = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('补录物流单号'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          textCapitalization: TextCapitalization.characters,
+          decoration: appInput(
+            hint: '粘贴或扫码填入物流单号',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
+    if (submitted == null || submitted.isEmpty) {
+      controller.dispose();
+      return;
+    }
+    await AppDatabase.instance.updateOrderTracking(
+      orderId: view.order.id,
+      trackingNo: submitted,
+    );
+    controller.dispose();
+    if (!mounted) return;
+    bumpDbRevision();
+    showToast(context, '物流单号已补录，包裹到货扫码后自动合并');
+  }
+
+  /// 经营概览时间范围标签。
+  ///
+  /// 参数：[range] 该标签代表的时间范围。
+  Widget _buildRangeChip(_Range range) {
+    final active = _range == range;
+    return Text(range.label)
+        .fontSize(12)
+        .fontWeight(FontWeight.w600)
+        .textColor(active ? Colors.white : AppColors.ink2)
+        .center()
+        .padding(horizontal: 14)
+        .ripple(
+          customBorder: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(999)),
+          ),
+        )
+        .gestures(onTap: () {
+          if (_range == range) return;
+          setState(() => _range = range);
+          _load();
+        })
+        .clipRRect(all: 999)
+        .decorated(
+          color: active ? AppColors.brand : AppColors.surface,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: active ? AppColors.brand : AppColors.line),
+        )
+        .padding(right: 8);
+  }
+
   @override
   Widget build(BuildContext context) {
     final hour = DateTime.now().hour;
@@ -89,6 +178,16 @@ class _DashboardPageState extends State<DashboardPage> {
       appBar: AppBar(
         title: const Text('包裹管家'),
         actions: [
+          IconButton(
+            tooltip: '商品库',
+            onPressed: _openProducts,
+            icon: const Icon(Icons.inventory_2_outlined),
+          ),
+          IconButton(
+            tooltip: '数据备份',
+            onPressed: () => showBackupSheet(context),
+            icon: const Icon(Icons.backup_outlined),
+          ),
           IconButton(
             tooltip: '扫码入库',
             onPressed: _openScan,
@@ -116,6 +215,13 @@ class _DashboardPageState extends State<DashboardPage> {
                 .textColor(AppColors.ink3)
                 .padding(top: 4),
             _StatsGrid(stats: stats).padding(top: 18),
+            const SectionHeader(title: '经营概览'),
+            Row(
+              children: [
+                for (final range in _Range.values) _buildRangeChip(range),
+              ],
+            ),
+            _BusinessCard(summary: _summary).padding(top: 10),
             const SectionHeader(title: '快捷操作'),
             Row(
               children: [
@@ -139,6 +245,58 @@ class _DashboardPageState extends State<DashboardPage> {
                 ).expanded(),
               ],
             ),
+            SectionHeader(
+              title: '待补单号',
+              trailing: _pendingOrders.isEmpty
+                  ? null
+                  : Text('${_pendingOrders.length} 笔')
+                      .fontSize(12)
+                      .textColor(AppColors.ink3),
+            ),
+            if (_pendingOrders.isEmpty)
+              AppCard(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                child: Text('暂无待补单号的订单')
+                    .fontSize(13)
+                    .textColor(AppColors.ink3),
+              )
+            else
+              ..._pendingOrders.map(
+                (view) => AppCard(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  child: Row(
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            view.order.title.isEmpty
+                                ? '未命名订单'
+                                : view.order.title,
+                          )
+                              .fontSize(14)
+                              .fontWeight(FontWeight.w600)
+                              .textColor(AppColors.ink),
+                          Text(
+                            '${view.accountTitle} · ${view.order.route.label} · '
+                            '${formatTime(view.order.orderedAt)}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          )
+                              .fontSize(12)
+                              .textColor(AppColors.ink3)
+                              .padding(top: 3),
+                        ],
+                      ).expanded(),
+                      TextButton(
+                        onPressed: () => _fillTracking(view),
+                        child: const Text('补单号', maxLines: 1, softWrap: false),
+                      ),
+                    ],
+                  ),
+                ).padding(bottom: 8),
+              ),
             SectionHeader(
               title: '最近入库',
               trailing: TextButton(
@@ -283,11 +441,81 @@ class _QuickAction extends StatelessWidget {
       child: Column(
         children: [
           Icon(icon, size: 22, color: highlight ? Colors.white : AppColors.brandDeep),
-          Text(label)
+          Text(label, maxLines: 1, overflow: TextOverflow.ellipsis)
               .fontSize(12)
               .fontWeight(FontWeight.w600)
               .textColor(fg)
               .padding(top: 8),
+        ],
+      ),
+    );
+  }
+}
+
+/// 经营概览时间范围。
+enum _Range {
+  thisMonth('本月'),
+  lastThreeMonths('近3月'),
+  thisYear('本年');
+
+  const _Range(this.label);
+
+  /// 中文展示名。
+  final String label;
+
+  /// 计算统计起点（含）。
+  DateTime start(DateTime now) {
+    switch (this) {
+      case _Range.thisMonth:
+        return DateTime(now.year, now.month, 1);
+      case _Range.lastThreeMonths:
+        return DateTime(now.year, now.month - 2, 1);
+      case _Range.thisYear:
+        return DateTime(now.year, 1, 1);
+    }
+  }
+}
+
+/// 经营概览卡片：订单数、销售额、成本与利润。
+class _BusinessCard extends StatelessWidget {
+  const _BusinessCard({required this.summary});
+
+  final BusinessSummary? summary;
+
+  /// 金额格式化，空值显示占位符。
+  String _money(double? value) => value == null ? '—' : value.toStringAsFixed(2);
+
+  @override
+  Widget build(BuildContext context) {
+    final profit = summary?.profit ?? 0;
+    final items = <(String, String, Color)>[
+      ('订单', '${summary?.orderCount ?? 0}', AppColors.ink),
+      ('销售额', '¥${_money(summary?.sales)}', AppColors.ink),
+      ('成本', '¥${_money(summary?.cost)}', AppColors.ink),
+      ('利润', '¥${_money(summary?.profit)}',
+          profit >= 0 ? AppColors.brandDeep : AppColors.danger),
+    ];
+    return AppCard(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 14),
+      child: Row(
+        children: [
+          for (final item in items)
+            Column(
+              children: [
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(item.$2)
+                      .fontSize(17)
+                      .fontWeight(FontWeight.w700)
+                      .textColor(item.$3)
+                      .textStyle(const TextStyle(height: 1.2)),
+                ),
+                Text(item.$1)
+                    .fontSize(11)
+                    .textColor(AppColors.ink3)
+                    .padding(top: 4),
+              ],
+            ).expanded(),
         ],
       ),
     );

@@ -279,7 +279,7 @@ class _ScanPageState extends State<ScanPage> {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const Text('手输单号'),
+              child: const Text('手输单号', maxLines: 1, softWrap: false),
             ).expanded(),
             const SizedBox(width: 10),
             FilledButton(
@@ -293,7 +293,7 @@ class _ScanPageState extends State<ScanPage> {
                         color: Colors.white,
                       ),
                     )
-                  : const Text('确认入库'),
+                  : const Text('确认入库', maxLines: 1, softWrap: false),
             ).expanded(),
           ],
         ).padding(top: 10),

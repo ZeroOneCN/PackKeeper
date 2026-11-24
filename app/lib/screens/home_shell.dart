@@ -6,7 +6,7 @@ import 'accounts_page.dart';
 import 'dashboard_page.dart';
 import 'inbox_page.dart';
 
-/// 应用主壳：底部三个主 Tab（工作台 / 待认领 / 台账）。
+/// 应用主壳：底部三个主 Tab（工作概览 / 待认领池 / 账号台账）。
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
 
@@ -35,17 +35,17 @@ class _HomeShellState extends State<HomeShell> {
           NavigationDestination(
             icon: Icon(Icons.grid_view_outlined),
             selectedIcon: Icon(Icons.grid_view_rounded),
-            label: '工作台',
+            label: '工作概览',
           ),
           NavigationDestination(
             icon: Icon(Icons.inbox_outlined),
             selectedIcon: Icon(Icons.inbox),
-            label: '待认领',
+            label: '待认领池',
           ),
           NavigationDestination(
             icon: Icon(Icons.badge_outlined),
             selectedIcon: Icon(Icons.badge),
-            label: '台账',
+            label: '账号台账',
           ),
         ],
       ).decorated(

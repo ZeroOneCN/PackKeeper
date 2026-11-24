@@ -231,6 +231,34 @@ class AppDatabase {
     return id;
   }
 
+  /// 更新平台账号信息。
+  ///
+  /// 参数：[id] 账号主键；[platformId] 所属平台；[alias] 账号别名；
+  /// [owner] 归属员工；[note] 备注；[status] 状态（active/disabled）。
+  Future<void> updateAccount({
+    required String id,
+    required String platformId,
+    required String alias,
+    String owner = '',
+    String note = '',
+    String status = 'active',
+  }) async {
+    final db = await database;
+    await db.update(
+      'accounts',
+      {
+        'platform_id': platformId,
+        'alias': alias.trim(),
+        'owner': owner.trim(),
+        'note': note.trim(),
+        'status': status,
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    await _audit(db, 'account.update', 'account', id, alias.trim());
+  }
+
   /// 按状态与关键词查询包裹。
   ///
   /// 参数：[status] 可选状态过滤；[keyword] 可选运单号模糊搜索；[limit] 上限。

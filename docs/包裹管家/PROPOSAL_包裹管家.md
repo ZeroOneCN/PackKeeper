@@ -41,7 +41,7 @@
 
 | 方案 | 优势 | 劣势 | 结论 |
 | --- | --- | --- | --- |
-| **Flutter + Dart** | 一套代码 iOS/Android；`mobile_scanner`（ML Kit/ZXing）条形码识别成熟；`camera` 可控对焦/曝光/补光；自绘 UI 在大列表、连续扫码场景流畅；SQLite(`drift`) 成熟 | 团队若无 Dart 经验需学习；部分国产 ROM 相机兼容需适配 | **推荐（方案 A）** |
+| **Flutter + Dart** | 一套代码 iOS/Android；`mobile_scanner`（ML Kit/ZXing）条形码识别成熟；`camera` 可控对焦/曝光/补光；自绘 UI 在大列表、连续扫码场景流畅；SQLite(`sqflite`) 成熟 | 团队若无 Dart 经验需学习；部分国产 ROM 相机兼容需适配 | **推荐（方案 A）** |
 | React Native + TypeScript | 与 Web 后台同语言，招人容易；`react-native-vision-camera` + `vision-camera-code-scanner` 可用 | 原生模块版本冲突多；OCR 需 `react-native-ml-kit`，维护活跃度一般；长列表/连续扫码性能调优成本更高 | 备选（方案 B，团队 TS 强时） |
 | 原生 Kotlin / Swift | 相机与性能上限最高 | 双端两套代码，人力翻倍 | 仅在只做 Android 且追求极致时考虑 |
 | uni-app / 小程序 | 上手快 | 相机连续扫码、离线库、OCR 能力受限，插件质量参差，长期扩展差 | 不推荐作为主客户端 |
@@ -62,7 +62,7 @@
 ```
 移动端   Flutter 3.x + Dart            （仅 Android，1080×2400 基准）
 端侧识别 ML Kit 条码解码 + ML Kit 中文 OCR（bundled 独立版，离线、无 GMS 可用，APK +约20MB）
-本地库   SQLite + drift                （离线优先、变更日志）
+本地库   SQLite + sqflite              （离线优先、变更日志；不用 drift 以免引入代码生成）
 后端     Go 1.22+ / Gin + sqlc         （REST + JWT + 增量同步接口）
 数据库   SQLite（P1 内嵌，零运维）→ PostgreSQL 16（P4 迁移，JSONB + pg_trgm）
 文件存储 服务器本地目录 + 限时签名 URL（P4 起可换 OSS/COS）

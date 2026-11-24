@@ -1,0 +1,19 @@
+# 生成物与本地临时文件
+.screenshots/
+.trae-html-share-packages/
+*.zip
+
+# 编辑器
+.idea/
+.vscode/
+*.iml
+
+# 系统
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# 密钥与环境变量
+.env
+.env.*
+!/.env.example

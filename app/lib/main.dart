@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'core/db.dart';
 import 'core/theme.dart';
@@ -21,6 +22,13 @@ class PackKeeperApp extends StatelessWidget {
       title: '包裹管家',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
+      locale: const Locale('zh', 'CN'),
+      supportedLocales: const [Locale('zh', 'CN')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       home: const HomeShell(),
     );
   }

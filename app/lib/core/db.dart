@@ -797,19 +797,25 @@ class AppDatabase {
     );
   }
 
-  /// 统计某个时间起点之后的订单经营数据（销售额、成本、利润）。
+  /// 统计某个时间区间内的订单经营数据（销售额、成本、利润）。
   ///
-  /// 参数：[start] 统计起始时间（含）。
-  Future<BusinessSummary> orderSummary(DateTime start) async {
+  /// 参数：[start] 统计起始时间（含）；[end] 可选结束时间（不含）。
+  Future<BusinessSummary> orderSummary(DateTime start, {DateTime? end}) async {
     final db = await database;
+    final args = <Object?>[start.millisecondsSinceEpoch];
+    var where = 'ordered_at >= ?';
+    if (end != null) {
+      where += ' AND ordered_at < ?';
+      args.add(end.millisecondsSinceEpoch);
+    }
     final rows = await db.rawQuery(
       '''
       SELECT COUNT(*) AS c,
              COALESCE(SUM(amount), 0) AS sales,
              COALESCE(SUM(cost), 0) AS cost
-      FROM orders WHERE ordered_at >= ?
+      FROM orders WHERE $where
       ''',
-      [start.millisecondsSinceEpoch],
+      args,
     );
     if (rows.isEmpty) {
       return const BusinessSummary(orderCount: 0, sales: 0, cost: 0);

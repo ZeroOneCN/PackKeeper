@@ -161,6 +161,8 @@ flowchart LR
 4. 结构化结果用于**候选推荐**，不自动定归属；所有字段可人工编辑修正。
 
 > 准确率保障主要来自"条码 + OCR + 校验位"三源交叉与规则库，而不是模型精度，因此无需服务端 PaddleOCR。
+>
+> 工程注意（2026-11-24 实机踩坑）：`google_mlkit_text_recognition` 对中文模型声明的是 `compileOnly`，Android 侧必须在 `app/android/app/build.gradle.kts` 显式加入 `implementation("com.google.mlkit:text-recognition-chinese:16.0.1")`，否则运行时抛 `NoClassDefFoundError: ChineseTextRecognizerOptions$Builder` 直接崩溃。
 
 ### 5.3 归属分配
 - 待认领池支持：按扫描时间/员工/快递公司筛选，长按多选批量分配；

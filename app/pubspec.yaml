@@ -44,6 +44,7 @@ dependencies:
   uuid: ^4.6.0
   styled_widget: ^0.4.1
   flutter_slidable: ^5.2.0
+  app_settings: ^9.0.1
 
 dev_dependencies:
   flutter_test:

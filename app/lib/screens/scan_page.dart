@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:app_settings/app_settings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -416,9 +417,23 @@ class _CameraError extends StatelessWidget {
             .fontSize(12)
             .textAlignment(TextAlign.center)
             .padding(top: 6),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(0),
-          child: const Text('返回'),
+        Row(
+          children: [
+            OutlinedButton(
+              onPressed: () => AppSettings.openAppSettings(),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white,
+                side: const BorderSide(color: Color(0xFF374151)),
+                minimumSize: const Size(0, 46),
+              ),
+              child: const Text('去设置', maxLines: 1, softWrap: false),
+            ).expanded(),
+            const SizedBox(width: 10),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(0),
+              child: const Text('返回', maxLines: 1, softWrap: false),
+            ).expanded(),
+          ],
         ).padding(top: 18),
       ],
     ).padding(horizontal: 32).center().backgroundColor(Colors.black);

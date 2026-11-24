@@ -163,6 +163,53 @@ class AppDatabase {
     return id;
   }
 
+  /// 重命名平台。
+  ///
+  /// 参数：[id] 平台主键；[name] 新名称（重名会抛数据库唯一约束异常）。
+  Future<void> renamePlatform({required String id, required String name}) async {
+    final db = await database;
+    await db.update(
+      'platforms',
+      {'name': name.trim()},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    await _audit(db, 'platform.update', 'platform', id, name.trim());
+  }
+
+  /// 删除平台。
+  ///
+  /// 参数：[id] 平台主键。平台下仍有账号时抛出 [StateError]。
+  Future<void> deletePlatform(String id) async {
+    final db = await database;
+    final count = Sqflite.firstIntValue(
+          await db.rawQuery(
+            'SELECT COUNT(*) FROM accounts WHERE platform_id = ?',
+            [id],
+          ),
+        ) ??
+        0;
+    if (count > 0) {
+      throw StateError('该平台下还有 $count 个账号，无法删除');
+    }
+    final rows = await db.query(
+      'platforms',
+      columns: ['name'],
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (rows.isEmpty) return;
+    await db.delete('platforms', where: 'id = ?', whereArgs: [id]);
+    await _audit(
+      db,
+      'platform.delete',
+      'platform',
+      id,
+      (rows.first['name'] as String?) ?? '',
+    );
+  }
+
   /// 查询账号台账（联表带出平台信息）。
   ///
   /// 参数：[platformId] 可选平台过滤；[keyword] 可选别名/归属人模糊搜索。

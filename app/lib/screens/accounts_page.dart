@@ -356,6 +356,200 @@ class _AccountsPageState extends State<AccountsPage> {
     }
   }
 
+  /// 平台管理：底部弹层中重命名或删除平台。
+  Future<void> _managePlatforms() async {
+    final action =
+        await showModalBottomSheet<({String type, ShopPlatform platform})>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text(
+                '平台管理',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+              ),
+            ),
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  for (final platform in _platforms)
+                    ListTile(
+                      leading: const SizedBox(width: 10, height: 10).decorated(
+                        color: Color(platform.color),
+                        shape: BoxShape.circle,
+                      ),
+                      title: Text(platform.name),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            tooltip: '重命名',
+                            icon: const Icon(
+                              Icons.edit_outlined,
+                              size: 20,
+                              color: AppColors.ink2,
+                            ),
+                            onPressed: () => Navigator.pop(
+                              ctx,
+                              (type: 'rename', platform: platform),
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: '删除',
+                            icon: const Icon(
+                              Icons.delete_outline,
+                              size: 20,
+                              color: AppColors.danger,
+                            ),
+                            onPressed: () => Navigator.pop(
+                              ctx,
+                              (type: 'delete', platform: platform),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (action == null || !mounted) return;
+    if (action.type == 'rename') {
+      await _renamePlatform(action.platform);
+    } else {
+      await _deletePlatform(action.platform);
+    }
+  }
+
+  /// 重命名平台（名称非空且不与其它平台重复）。
+  ///
+  /// 参数：[platform] 目标平台。
+  Future<void> _renamePlatform(ShopPlatform platform) async {
+    _platformNameCtrl.text = platform.name;
+    var error = '';
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('重命名平台'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _platformNameCtrl,
+                autofocus: true,
+                decoration: appInput(hint: '平台名称'),
+                onChanged: (_) {
+                  if (error.isNotEmpty) setDialogState(() => error = '');
+                },
+              ),
+              if (error.isNotEmpty)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(error)
+                      .fontSize(11)
+                      .textColor(AppColors.danger)
+                      .padding(top: 4),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final name = _platformNameCtrl.text.trim();
+                if (name.isEmpty) {
+                  setDialogState(() => error = '请输入平台名称');
+                  return;
+                }
+                if (_platforms.any(
+                  (p) => p.name == name && p.id != platform.id,
+                )) {
+                  setDialogState(() => error = '该平台已存在');
+                  return;
+                }
+                Navigator.pop(ctx, true);
+              },
+              child: const Text('保存'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (saved != true) return;
+    try {
+      await AppDatabase.instance.renamePlatform(
+        id: platform.id,
+        name: _platformNameCtrl.text,
+      );
+    } catch (_) {
+      if (!mounted) return;
+      showToast(context, '重命名失败，请检查名称是否重复');
+      return;
+    }
+    if (!mounted) return;
+    bumpDbRevision();
+    showToast(context, '平台已重命名');
+  }
+
+  /// 删除平台（二次确认，平台下无账号时才可删除）。
+  ///
+  /// 参数：[platform] 目标平台。
+  Future<void> _deletePlatform(ShopPlatform platform) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('删除平台'),
+        content: Text('确认删除「${platform.name}」？仅当该平台下没有账号时可以删除。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await AppDatabase.instance.deletePlatform(platform.id);
+    } on StateError catch (e) {
+      if (!mounted) return;
+      showToast(context, e.message);
+      return;
+    } catch (_) {
+      if (!mounted) return;
+      showToast(context, '删除失败，请重试');
+      return;
+    }
+    if (!mounted) return;
+    if (_platformId == platform.id) {
+      setState(() => _platformId = null);
+    }
+    bumpDbRevision();
+    showToast(context, '平台已删除');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -366,15 +560,19 @@ class _AccountsPageState extends State<AccountsPage> {
             tooltip: '更多操作',
             icon: const Icon(Icons.more_vert, color: AppColors.ink2),
             onSelected: (value) {
-              if (value == 'account') {
-                _openAccountDialog();
-              } else {
-                _addPlatform();
+              switch (value) {
+                case 'account':
+                  _openAccountDialog();
+                case 'platform':
+                  _addPlatform();
+                case 'manage':
+                  _managePlatforms();
               }
             },
             itemBuilder: (_) => const [
               PopupMenuItem(value: 'account', child: Text('添加账号')),
               PopupMenuItem(value: 'platform', child: Text('添加平台')),
+              PopupMenuItem(value: 'manage', child: Text('平台管理')),
             ],
           ),
           const SizedBox(width: 4),

@@ -388,7 +388,7 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 }
 
-/// 顶部指标卡，一行四列。
+/// 顶部指标概览：四项数据合并在一张卡片内，按等分列排布。
 class _StatsGrid extends StatelessWidget {
   const _StatsGrid({required this.stats});
 
@@ -417,53 +417,61 @@ class _StatsGrid extends StatelessWidget {
         const Color(0xFF6D28D9),
       ),
     ];
-    return Row(
-      children: [
-        for (var i = 0; i < items.length; i++) ...[
-          _MetricCard(item: items[i]).expanded(),
-          if (i != items.length - 1) const SizedBox(width: 8),
+    return AppCard(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 14),
+      child: Row(
+        children: [
+          for (var i = 0; i < items.length; i++) ...[
+            _StatCell(item: items[i]).expanded(),
+            if (i != items.length - 1)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                child: Container(
+                  width: 1,
+                  height: 34,
+                  color: AppColors.line,
+                ),
+              ),
+          ],
         ],
-      ],
+      ),
     );
   }
 }
 
-/// 单个指标卡。
-class _MetricCard extends StatelessWidget {
-  const _MetricCard({required this.item});
+/// 指标概览中的单个数据单元。
+class _StatCell extends StatelessWidget {
+  const _StatCell({required this.item});
 
   final (String, int, IconData, Color) item;
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 12),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(item.$3, size: 13, color: item.$4),
-                Text(
-                  item.$1,
-                  maxLines: 1,
-                ).fontSize(11).textColor(AppColors.ink2).padding(left: 4),
-              ],
-            ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(item.$3, size: 13, color: item.$4),
+              Text(
+                item.$1,
+                maxLines: 1,
+              ).fontSize(11).textColor(AppColors.ink2).padding(left: 4),
+            ],
           ),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text('${item.$2}')
-                .fontSize(22)
-                .fontWeight(FontWeight.w700)
-                .textColor(AppColors.ink)
-                .textStyle(const TextStyle(height: 1)),
-          ).padding(top: 8),
-        ],
-      ),
+        ),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text('${item.$2}')
+              .fontSize(22)
+              .fontWeight(FontWeight.w700)
+              .textColor(AppColors.ink)
+              .textStyle(const TextStyle(height: 1)),
+        ).padding(top: 8),
+      ],
     );
   }
 }

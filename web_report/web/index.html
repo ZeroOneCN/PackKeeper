@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>包裹管家 · 数据报表</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="logo">包</span>
+        <div class="brand-text">
+          <h1>包裹管家 · 数据报表</h1>
+          <p>导入手机 App 导出的 JSON，自动分析经营数据并导出 CSV</p>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="btn-import" class="btn primary" type="button">导入 JSON</button>
+        <button id="btn-export-orders" class="btn" type="button" disabled>订单 CSV</button>
+        <button id="btn-export-parcels" class="btn" type="button" disabled>包裹 CSV</button>
+        <button id="btn-export-summary" class="btn" type="button" disabled>汇总 CSV</button>
+        <button id="btn-clear" class="btn danger" type="button" disabled>清空数据</button>
+      </div>
+    </header>
+
+    <input id="file-input" type="file" accept=".json,application/json" hidden />
+
+    <main>
+      <section id="empty" class="empty">
+        <div id="drop-zone" class="drop-zone">
+          <div class="drop-icon">⇪</div>
+          <h2>把 App 导出的 JSON 拖到这里</h2>
+          <p>也可以点击选择文件，数据会保存在本机浏览器，下次打开自动恢复。</p>
+          <button id="btn-import-empty" class="btn primary big" type="button">
+            选择 JSON 文件
+          </button>
+          <span class="drop-hint">App 路径：工作概览 → 右上角“数据备份” → 导出 JSON</span>
+        </div>
+      </section>
+
+      <section id="report" hidden>
+        <div id="meta" class="meta"></div>
+
+        <div class="range-bar">
+          <div>
+            <h2>经营分析</h2>
+            <p id="range-hint" class="range-hint"></p>
+          </div>
+          <div id="range-group" class="segmented">
+            <button type="button" data-range="all" class="active">全部</button>
+            <button type="button" data-range="month">本月</button>
+            <button type="button" data-range="quarter">近3月</button>
+            <button type="button" data-range="year">本年</button>
+          </div>
+        </div>
+
+        <div id="kpis" class="kpis"></div>
+
+        <div class="grid two">
+          <section class="card">
+            <div class="card-head">
+              <h3>平台表现</h3>
+              <span class="card-tip">按订单金额汇总</span>
+            </div>
+            <div id="platform-table" class="table-wrap"></div>
+          </section>
+          <section class="card">
+            <div class="card-head">
+              <h3>账号表现</h3>
+              <span class="card-tip">按订单金额汇总</span>
+            </div>
+            <div id="account-table" class="table-wrap"></div>
+          </section>
+        </div>
+
+        <section class="card">
+          <div class="card-head">
+            <h3>近 12 个月销售趋势</h3>
+            <span class="card-tip">柱高为销售额，括号内为订单数</span>
+          </div>
+          <div id="trend" class="bar-chart"></div>
+        </section>
+
+        <div class="grid two">
+          <section class="card">
+            <div class="card-head"><h3>包裹状态</h3></div>
+            <div id="parcel-status" class="stat-list"></div>
+          </section>
+          <section class="card">
+            <div class="card-head"><h3>快递公司分布</h3></div>
+            <div id="carrier" class="stat-list"></div>
+          </section>
+        </div>
+
+        <section class="card">
+          <div class="card-head">
+            <h3>待补物流单号</h3>
+            <span class="card-tip">下单后尚未回填物流单号的订单</span>
+          </div>
+          <div id="pending-orders" class="table-wrap"></div>
+        </section>
+      </section>
+    </main>
+
+    <footer>
+      数据仅保存在本机浏览器（IndexedDB），不会上传到任何服务器。关闭页面后再次打开同一地址即可继续查看。
+    </footer>
+
+    <div id="toast" class="toast" hidden></div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

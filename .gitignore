@@ -2,6 +2,8 @@
 .screenshots/
 .trae-html-share-packages/
 *.zip
+web_report/dist/
+web_report/.dart_tool/
 
 # 编辑器
 .idea/

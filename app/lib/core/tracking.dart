@@ -24,11 +24,12 @@ const _prefixCarriers = <String, String>{
   'SF': '顺丰',
   'JD': '京东',
   'JT': '极兔',
-  'YT': '圆通',
   'YTO': '圆通',
+  'YT': '圆通',
   'ZTO': '中通',
   'STO': '申通',
   'EMS': '邮政',
+  'YZ': '邮政',
   'DPK': '德邦',
   'DBL': '德邦',
   'UC': '优速',
@@ -89,27 +90,39 @@ TrackingInfo parseTracking(String raw) {
 
 /// 按数字前缀粗略推断快递公司。
 ///
-/// 参数：[no] 纯数字或字母数字单号。
+/// 覆盖常见电子面单规则（无法仅凭号段区分的，如圆通纯数字单号，不做猜测）：
+/// - 申通：12–15 位，66/77/88/55/44 开头
+/// - 韵达：13 位，3/4/5 开头
+/// - 邮政：13 位，97/98/99/1 开头
+/// - 京东：15 位，1 开头
+/// - 中通：12/14 位，6/7/8 开头
+///
+/// 参数：[no] 纯数字单号。
 /// 返回：快递公司名，无法判断时返回 null。
 String? _guessByDigits(String no) {
   if (!RegExp(r'^\d+$').hasMatch(no)) return null;
   final len = no.length;
-  if (len == 13) {
-    if (no.startsWith('43') || no.startsWith('31') || no.startsWith('38')) {
-      return '韵达';
-    }
-    if (no.startsWith('77') || no.startsWith('88') || no.startsWith('66')) {
-      return '申通';
-    }
-    if (no.startsWith('97') || no.startsWith('98')) {
-      return '邮政';
-    }
+  final head1 = no.substring(0, 1);
+  final head2 = len >= 2 ? no.substring(0, 2) : no;
+
+  if (len >= 12 &&
+      len <= 15 &&
+      const {'66', '77', '88', '55', '44'}.contains(head2)) {
+    return '申通';
   }
-  if ((len == 12 || len == 13 || len == 14) &&
-      (no.startsWith('7') || no.startsWith('8'))) {
+  if (len == 13 && const {'3', '4', '5'}.contains(head1)) {
+    return '韵达';
+  }
+  if (len == 13 &&
+      (head2 == '97' || head2 == '98' || head2 == '99' || head1 == '1')) {
+    return '邮政';
+  }
+  if (len == 15 && head1 == '1') {
+    return '京东';
+  }
+  if ((len == 12 || len == 14) && const {'6', '7', '8'}.contains(head1)) {
     return '中通';
   }
-  if (len == 15 && no.startsWith('1')) return '京东';
   return null;
 }
 

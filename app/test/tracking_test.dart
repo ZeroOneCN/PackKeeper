@@ -23,6 +23,31 @@ void main() {
     test('13 位 77 开头识别为申通', () {
       expect(parseTracking('7730123456789').carrier, '申通');
     });
+
+    test('八家快递的前缀条码识别', () {
+      const cases = {
+        'SF1234567890123': '顺丰',
+        'YT2501011234567': '圆通',
+        'YTO2501011234': '圆通',
+        'ZTO2501011234': '中通',
+        'STO2501011234': '申通',
+        'JDVA12345678901': '京东',
+        'EMS1234567890': '邮政',
+        'JT0001234567890': '极兔',
+        'YD2501011234567': '韵达',
+      };
+      cases.forEach((no, carrier) {
+        expect(parseTracking(no).carrier, carrier, reason: no);
+      });
+    });
+
+    test('纯数字号段推断快递公司', () {
+      expect(parseTracking('5530123456789').carrier, '申通');
+      expect(parseTracking('4312345678901').carrier, '韵达');
+      expect(parseTracking('9812345678901').carrier, '邮政');
+      expect(parseTracking('78123456789012').carrier, '中通');
+      expect(parseTracking('123456789012345').carrier, '京东');
+    });
   });
 
   group('面单文本字段提取', () {

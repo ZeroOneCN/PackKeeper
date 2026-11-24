@@ -283,16 +283,17 @@ class _InboxPageState extends State<InboxPage> {
             .fontSize(13)
             .fontWeight(FontWeight.w600)
             .textColor(AppColors.ink),
-        const Spacer(),
+        const SizedBox(width: 12),
         TextButton(
           onPressed: _markException,
           style: TextButton.styleFrom(foregroundColor: AppColors.danger),
           child: const Text('标记异常'),
-        ),
+        ).expanded(),
+        const SizedBox(width: 8),
         FilledButton(
           onPressed: () => _openAssign(_selected.toList()),
           child: const Text('分配归属'),
-        ).padding(left: 8),
+        ).expanded(),
       ],
     )
         .padding(left: 16, top: 10, right: 16, bottom: 10)

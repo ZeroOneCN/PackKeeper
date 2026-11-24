@@ -268,10 +268,8 @@ class _ScanPageState extends State<ScanPage> {
         ),
         Row(
           children: [
-            OutlinedButton.icon(
+            OutlinedButton(
               onPressed: _saving ? null : _manualInput,
-              icon: const Icon(Icons.keyboard, size: 18),
-              label: const Text('手输单号'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -281,6 +279,7 @@ class _ScanPageState extends State<ScanPage> {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
+              child: const Text('手输单号'),
             ).expanded(),
             const SizedBox(width: 10),
             FilledButton(
@@ -294,8 +293,8 @@ class _ScanPageState extends State<ScanPage> {
                         color: Colors.white,
                       ),
                     )
-                  : Text(pending > 0 ? '完成入库（$pending）' : '完成'),
-            ).expanded(flex: 2),
+                  : const Text('确认入库'),
+            ).expanded(),
           ],
         ).padding(top: 10),
       ],

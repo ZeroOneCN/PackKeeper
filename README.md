@@ -35,12 +35,12 @@
 
 | 概览 · 快捷操作置顶 | 待认领池 | 订单列表 | 转寄批次 |
 | :---: | :---: | :---: | :---: |
-| <img src="docs/screenshots/01-dashboard.png" width="200" alt="概览"> | <img src="docs/screenshots/02-inbox.png" width="200" alt="认领"> | <img src="docs/screenshots/03-orders.png" width="200" alt="订单"> | <img src="docs/screenshots/04-shipments.png" width="200" alt="转寄"> |
+| <img src="docs/screenshots/01-dashboard.png" width="200" height="445" alt="概览"> | <img src="docs/screenshots/02-inbox.png" width="200" height="445" alt="认领"> | <img src="docs/screenshots/03-orders.png" width="200" height="445" alt="订单"> | <img src="docs/screenshots/04-shipments.png" width="200" height="445" alt="转寄"> |
 | 今日指标 + 经营概览 + 待补单号 | 单号池，多选批量分配 | 左滑补单号，可从池子选 | 批次卡片显示件数/订单数/快递费 |
 
 | 台账（平台/账号） | 批次详情（含关联订单） | 扫码入库 | 补单号弹窗（扫码/选择/取消/保存） |
 | :---: | :---: | :---: | :---: |
-| <img src="docs/screenshots/05-ledger.png" width="200" alt="台账"> | <img src="docs/screenshots/06-shipment-detail.png" width="200" alt="批次详情"> | <img src="docs/screenshots/07-scan.png" width="200" alt="扫码"> | <img src="docs/screenshots/08-fill-tracking.png" width="200" alt="补单号"> |
+| <img src="docs/screenshots/05-ledger.png" width="200" height="445" alt="台账"> | <img src="docs/screenshots/06-shipment-detail.png" width="200" height="445" alt="批次详情"> | <img src="docs/screenshots/07-scan.png" width="200" height="445" alt="扫码"> | <img src="docs/screenshots/08-fill-tracking.png" width="200" height="445" alt="补单号"> |
 | 平台与账号统一管理 | 逐件核对商品、平台、金额 | 连续扫码，重复单号震动提示 | 四个按钮并列一行 |
 
 > 交互设计稿（11 屏静态预览）：[design/mvp-ui.html](./design/mvp-ui.html)，浏览器直接打开即可。

@@ -252,6 +252,24 @@
   .addr .who { font-size: 12px; font-weight: 600; }
   .addr .det { font-size: 11px; color: #7A8494; margin-top: 2px; line-height: 1.45; }
 
+  /* ---------- 08-11 订单与转寄 ---------- */
+  .ord-card { background: #fff; border: 1px solid var(--line); border-radius: 13px; padding: 11px; margin-bottom: 8px; }
+  .ord-top { display: flex; align-items: center; gap: 6px; }
+  .ord-top .amt { margin-left: auto; font-size: 14px; font-weight: 700; }
+  .ord-title { font-size: 12.5px; font-weight: 600; margin-top: 6px; }
+  .ord-meta { display: flex; gap: 8px; font-size: 10px; color: #8A94A6; margin-top: 4px; }
+  .cbadge { width: 52px; height: 40px; border-radius: 10px; background: var(--brand-soft); color: var(--brand-deep); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex: none; }
+  .brow { display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid var(--line); border-radius: 13px; padding: 11px; margin-bottom: 8px; }
+  .brow .grow { flex: 1; min-width: 0; }
+  .brow .no { font-size: 12.5px; font-weight: 600; }
+  .brow .meta { font-size: 10px; color: #8A94A6; margin-top: 3px; }
+  .brow .fee { font-size: 14px; font-weight: 700; text-align: right; }
+  .brow .fee small { display: block; font-size: 9px; color: #94A3B8; font-weight: 500; }
+  .pbtn { display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 10px 11px; margin-bottom: 7px; }
+  .pbtn .grow { flex: 1; min-width: 0; }
+  .pbtn .no { font-size: 12.5px; font-weight: 600; }
+  .pbtn .meta { font-size: 10px; color: #8A94A6; margin-top: 3px; display: flex; gap: 5px; align-items: center; }
+
   .foot { max-width: 900px; margin: 56px auto 0; text-align: center; color: #8A94A6; font-size: 12px; line-height: 1.7; }
   .foot b { color: #5B6577; }
 </style>
@@ -268,7 +286,9 @@
       <span>面单识别</span><i></i>
       <span>待认领池</span><i></i>
       <span>分配归属</span><i></i>
-      <span>账号台账</span>
+      <span>订单回填</span><i></i>
+      <span>转寄快递费</span><i></i>
+      <span>经营台账</span>
     </div>
   </header>
 
@@ -360,10 +380,11 @@
             </div>
           </div>
           <div class="tabbar">
-            <div class="tab active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg><span>工作台</span></div>
-            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16"/><path d="M7 12h10"/></svg><span>入库</span></div>
-            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span>台账</span></div>
-            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/></svg><span>我的</span></div>
+            <div class="tab active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg><span>概览</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16v10H4z"/><path d="M4 9l2-4h12l2 4"/><path d="M9 13h6"/></svg><span>认领</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/><path d="M9 12h6M9 16h4"/></svg><span>订单</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.6"/><circle cx="17.5" cy="18" r="1.6"/></svg><span>转寄</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 10h8M8 14h5"/></svg><span>台账</span></div>
           </div>
         </div>
       </div>
@@ -575,10 +596,11 @@
             <button class="btn btn-primary btn-sm">分配归属（3）</button>
           </div>
           <div class="tabbar">
-            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg><span>工作台</span></div>
-            <div class="tab active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16"/><path d="M7 12h10"/></svg><span>入库</span></div>
-            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span>台账</span></div>
-            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/></svg><span>我的</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg><span>概览</span></div>
+            <div class="tab active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16v10H4z"/><path d="M4 9l2-4h12l2 4"/><path d="M9 13h6"/></svg><span>认领</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/><path d="M9 12h6M9 16h4"/></svg><span>订单</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.6"/><circle cx="17.5" cy="18" r="1.6"/></svg><span>转寄</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 10h8M8 14h5"/></svg><span>台账</span></div>
           </div>
         </div>
       </div>
@@ -725,10 +747,11 @@
             </div>
           </div>
           <div class="tabbar">
-            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg><span>工作台</span></div>
-            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16"/><path d="M7 12h10"/></svg><span>入库</span></div>
-            <div class="tab active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span>台账</span></div>
-            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/></svg><span>我的</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg><span>概览</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16v10H4z"/><path d="M4 9l2-4h12l2 4"/><path d="M9 13h6"/></svg><span>认领</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/><path d="M9 12h6M9 16h4"/></svg><span>订单</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.6"/><circle cx="17.5" cy="18" r="1.6"/></svg><span>转寄</span></div>
+            <div class="tab active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 10h8M8 14h5"/></svg><span>台账</span></div>
           </div>
         </div>
       </div>
@@ -810,10 +833,268 @@
       <div class="phone-label"><b>07 代下单登记</b>订单先建、单号后回填</div>
     </div>
 
+    <!-- ============ 08 订单列表 ============ -->
+    <div class="phone">
+      <div class="shell">
+        <div class="screen">
+          <div class="statusbar">
+            <span>9:41</span>
+            <div class="sb-r"><span>5G</span><span class="sb-bat"></span></div>
+          </div>
+          <div class="appbar">
+            <div class="grow">
+              <div class="appbar-title">订单列表</div>
+              <div class="appbar-sub">左滑补单号 · 单号可从待认领池选择</div>
+            </div>
+            <div class="icon-btn">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            </div>
+          </div>
+          <div class="body">
+            <div class="search" style="margin-bottom:8px">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-3.5-3.5"/></svg>
+              搜索订单号、商品或单号
+            </div>
+            <div class="filters">
+              <span class="chip on">全部 26</span>
+              <span class="chip" style="background:#FEF3C7;color:#B45309">待补单号 5</span>
+              <span class="chip">已回填 21</span>
+            </div>
+            <div class="ord-card">
+              <div class="ord-top">
+                <span class="chip brand">京东</span>
+                <span class="t-sub">云集小店 A</span>
+                <span class="amt">¥330.00</span>
+              </div>
+              <div class="ord-title">秋冬加绒卫衣 · 男女同款</div>
+              <div class="ord-meta"><span class="mono">JD20261125008</span><span>11-25 09:32</span><span class="tag tag-warn">待补单号</span></div>
+            </div>
+            <div class="ord-card">
+              <div class="ord-top">
+                <span class="chip brand">淘宝</span>
+                <span class="t-sub">云集小店 B</span>
+                <span class="amt">¥168.00</span>
+              </div>
+              <div class="ord-title">保温杯 500ml · 奶油白</div>
+              <div class="ord-meta"><span class="mono">TB8899001122</span><span>11-24 18:06</span><span class="tag tag-ok">已回填</span></div>
+            </div>
+            <div class="hint">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 4v10M8 11l4 4 4-4M5 20h14"/></svg>
+              左滑订单「补单号」：可直接输入，也可从待认领池挑选包裹，保存后自动把该包裹绑定到本订单。
+            </div>
+          </div>
+          <div class="sheet">
+            <div class="sheet-handle"></div>
+            <div class="sheet-head"><div class="grow"><div class="t-title">补录物流单号</div></div><span class="tag tag-ok">待认领 6</span></div>
+            <div class="field" style="margin-bottom:6px">
+              <div class="lab">物流单号</div>
+              <div class="val">SF1438261750392<span class="paste">从待认领池选择</span></div>
+            </div>
+            <div class="pbtn">
+              <div class="grow"><div class="no mono">SF1438261750392</div><div class="meta"><span class="car">顺丰</span><span>待认领 · 12:03</span></div></div>
+              <span class="tag tag-ok">选中</span>
+            </div>
+            <div class="pbtn">
+              <div class="grow"><div class="no mono">78123456789012</div><div class="meta"><span class="car">中通</span><span>待认领 · 11:47</span></div></div>
+            </div>
+            <div class="pbtn">
+              <div class="grow"><div class="no mono">YT9876543210987</div><div class="meta"><span class="car">圆通</span><span>已入库 · 11:32</span></div></div>
+            </div>
+          </div>
+          <div class="tabbar">
+            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg><span>概览</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16v10H4z"/><path d="M4 9l2-4h12l2 4"/><path d="M9 13h6"/></svg><span>认领</span></div>
+            <div class="tab active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/><path d="M9 12h6M9 16h4"/></svg><span>订单</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.6"/><circle cx="17.5" cy="18" r="1.6"/></svg><span>转寄</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 10h8M8 14h5"/></svg><span>台账</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-label"><b>08 订单列表</b>补单号与待认领池联动</div>
+    </div>
+
+    <!-- ============ 09 转寄批次 ============ -->
+    <div class="phone">
+      <div class="shell">
+        <div class="screen">
+          <div class="statusbar">
+            <span>9:41</span>
+            <div class="sb-r"><span>5G</span><span class="sb-bat"></span></div>
+          </div>
+          <div class="appbar">
+            <div class="grow">
+              <div class="appbar-title">转寄批次</div>
+              <div class="appbar-sub">一次寄件一个批次 · 快递费计入净利润</div>
+            </div>
+            <div class="icon-btn">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            </div>
+          </div>
+          <div class="body">
+            <div class="search" style="margin-bottom:8px">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-3.5-3.5"/></svg>
+              搜索快递公司、运单号或备注
+            </div>
+            <div class="card" style="display:flex;align-items:center;margin-bottom:10px">
+              <div><div class="t-sub">本月转寄</div><div style="font-size:16px;font-weight:700;margin-top:2px">3 批 · 18 件</div></div>
+              <div style="margin-left:auto;text-align:right"><div class="t-sub">快递费</div><div style="font-size:16px;font-weight:700;color:#B45309;margin-top:2px">¥186.50</div></div>
+            </div>
+            <div class="brow">
+              <div class="cbadge">顺丰</div>
+              <div class="grow">
+                <div class="no mono">SF8888999900</div>
+                <div class="meta">8 件包裹 · 8 个订单 · 11-25 · 上家批次</div>
+              </div>
+              <div class="fee">¥12.50<small>快递费</small></div>
+            </div>
+            <div class="brow">
+              <div class="cbadge">中通</div>
+              <div class="grow">
+                <div class="no mono">78123456789012</div>
+                <div class="meta">6 件包裹 · 5 个订单 · 11-24</div>
+              </div>
+              <div class="fee">¥9.00<small>快递费</small></div>
+            </div>
+            <div class="brow">
+              <div class="cbadge">极兔</div>
+              <div class="grow">
+                <div class="no mono">JT000123456789</div>
+                <div class="meta">4 件包裹 · 4 个订单 · 11-22 · 补发</div>
+              </div>
+              <div class="fee">¥165.00<small>快递费</small></div>
+            </div>
+            <div class="hint" style="margin-top:4px">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.8h.01"/></svg>
+              点击批次查看包裹与商品订单；左滑可编辑（追加/移出包裹）或删除，删除后包裹恢复已入库。
+            </div>
+          </div>
+          <div class="tabbar">
+            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg><span>概览</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16v10H4z"/><path d="M4 9l2-4h12l2 4"/><path d="M9 13h6"/></svg><span>认领</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/><path d="M9 12h6M9 16h4"/></svg><span>订单</span></div>
+            <div class="tab active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.6"/><circle cx="17.5" cy="18" r="1.6"/></svg><span>转寄</span></div>
+            <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 10h8M8 14h5"/></svg><span>台账</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-label"><b>09 转寄批次</b>按批次归集快递费</div>
+    </div>
+
+    <!-- ============ 10 新建/编辑批次 ============ -->
+    <div class="phone">
+      <div class="shell">
+        <div class="screen">
+          <div class="statusbar">
+            <span>9:41</span>
+            <div class="sb-r"><span>5G</span><span class="sb-bat"></span></div>
+          </div>
+          <div class="appbar">
+            <div class="grow">
+              <div class="appbar-title">编辑转寄批次</div>
+              <div class="appbar-sub">可追加或移出包裹 · 移出后恢复已入库</div>
+            </div>
+          </div>
+          <div class="body">
+            <div class="field"><div class="lab">快递公司</div><div class="val">顺丰</div></div>
+            <div class="field"><div class="lab">运单号</div><div class="val">SF8888999900</div></div>
+            <div class="field"><div class="lab">快递费（元）</div><div class="val">12.50</div></div>
+            <div class="field"><div class="lab">寄出日期</div><div class="val">2026-11-25<span class="chev">›</span></div></div>
+            <div class="field"><div class="lab">备注</div><div class="val"><span class="ph">如 上家批次、件数说明</span></div></div>
+            <div class="sect"><b>选择本次寄出的包裹</b><span class="more">已选 3 件</span></div>
+            <div class="crow sel">
+              <div class="cb on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+              <div class="grow">
+                <div class="no mono">SF1438261750392</div>
+                <div class="meta"><span class="car">顺丰</span><span>已出库</span><span class="tag tag-ok" style="padding:1px 5px">已在本批次</span></div>
+              </div>
+            </div>
+            <div class="crow sel">
+              <div class="cb on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+              <div class="grow">
+                <div class="no mono">78123456789012</div>
+                <div class="meta"><span class="car">中通</span><span>已出库</span><span class="tag tag-ok" style="padding:1px 5px">已在本批次</span></div>
+              </div>
+            </div>
+            <div class="crow sel">
+              <div class="cb on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+              <div class="grow">
+                <div class="no mono">YT9876543210987</div>
+                <div class="meta"><span class="car">圆通</span><span>已入库</span><span class="tag tag-neutral" style="padding:1px 5px">本次追加</span></div>
+              </div>
+            </div>
+            <div class="hint">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.8h.01"/></svg>
+              取消勾选即从本批次移出，包裹恢复为已入库，可再次转寄；快递费按批次统一计算。
+            </div>
+          </div>
+          <div class="bottom-bar">
+            <button class="btn btn-primary">保存批次</button>
+          </div>
+        </div>
+      </div>
+      <div class="phone-label"><b>10 新建/编辑批次</b>批次内追加与移出</div>
+    </div>
+
+    <!-- ============ 11 批次详情 ============ -->
+    <div class="phone">
+      <div class="shell">
+        <div class="screen">
+          <div class="statusbar">
+            <span>9:41</span>
+            <div class="sb-r"><span>5G</span><span class="sb-bat"></span></div>
+          </div>
+          <div class="appbar">
+            <div class="grow">
+              <div class="appbar-title">批次详情</div>
+              <div class="appbar-sub">包裹与商品订单一屏核对</div>
+            </div>
+            <div class="icon-btn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10-10-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>
+            </div>
+          </div>
+          <div class="body">
+            <div class="card" style="margin-bottom:10px">
+              <div style="display:flex;align-items:center;gap:10px">
+                <div class="cbadge">顺丰</div>
+                <div class="grow" style="flex:1;min-width:0">
+                  <div class="no mono" style="font-size:13px;font-weight:600">SF8888999900</div>
+                  <div class="t-sub" style="margin-top:3px">3 件包裹 · 3 个订单 · 2026-11-25</div>
+                </div>
+                <div style="font-size:16px;font-weight:700">¥12.50</div>
+              </div>
+              <div class="t-sub" style="margin-top:8px">备注：上家批次</div>
+            </div>
+            <div class="sect"><b>本批次包裹</b><span class="more">3 件</span></div>
+            <div class="ord-card">
+              <div class="ord-top"><span class="mono" style="font-size:12.5px;font-weight:600">SF1438261750392</span><span class="amt">¥330.00</span></div>
+              <div class="ord-title">秋冬加绒卫衣 · 男女同款</div>
+              <div class="ord-meta"><span class="chip brand" style="height:18px">京东</span><span>云集小店 A</span><span>已出库</span></div>
+            </div>
+            <div class="ord-card">
+              <div class="ord-top"><span class="mono" style="font-size:12.5px;font-weight:600">78123456789012</span><span class="amt">¥168.00</span></div>
+              <div class="ord-title">保温杯 500ml · 奶油白</div>
+              <div class="ord-meta"><span class="chip brand" style="height:18px">淘宝</span><span>云集小店 B</span><span>已出库</span></div>
+            </div>
+            <div class="ord-card">
+              <div class="ord-top"><span class="mono" style="font-size:12.5px;font-weight:600">YT9876543210987</span><span class="amt">—</span></div>
+              <div class="ord-title" style="color:#94A3B8;font-weight:400">未关联订单（仅单号）</div>
+              <div class="ord-meta"><span class="car">圆通</span><span>已出库</span></div>
+            </div>
+            <div class="hint">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.8h.01"/></svg>
+              批次不只统计单号：每件包裹会带出对应订单商品、平台账号与金额，便于对上家核对。
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-label"><b>11 批次详情</b>包裹 + 商品订单核对</div>
+    </div>
+
   </div>
 
   <p class="foot">
     <b>说明</b>：以上为静态效果图，用于确认信息层级与操作路径，不含真实交互与数据。<br>
+    页面顺序：01 概览 → 02/03 入库 → 04 认领 → 05 归属 → 06 台账 → 07 下单 → 08 订单回填 → 09/10/11 转寄快递费。<br>
     尺寸基准 360 × 800 dp，对应 1080 × 2400 像素（@3x）；实现阶段使用 Flutter 自适应布局。
   </p>
 </div>

@@ -734,6 +734,15 @@ function renderParcelsTab(t) {
  */
 function renderShipmentsTab(t) {
   const counts = parcelCountByShipment(t.parcels);
+  const orderIds = new Set(t.orders.map((o) => o.id));
+  const orderSets = new Map();
+  for (const parcel of t.parcels) {
+    if (!parcel.shipment_id || !parcel.order_id) continue;
+    if (!orderIds.has(parcel.order_id)) continue;
+    if (!orderSets.has(parcel.shipment_id)) orderSets.set(parcel.shipment_id, new Set());
+    orderSets.get(parcel.shipment_id).add(parcel.order_id);
+  }
+  const orderCount = (id) => (orderSets.get(id) || new Set()).size;
   const filtered = searchList(t.shipments, $('shipments-search').value, (shipment) => [
     shipment.carrier,
     shipment.tracking_no,
@@ -747,6 +756,7 @@ function renderShipmentsTab(t) {
       shipment.carrier || '—',
       shipment.tracking_no || '—',
       count(counts.get(shipment.id) || 0),
+      count(orderCount(shipment.id)),
       { html: money(fee), text: fee.toFixed(2) },
       shipment.note || '—',
     ];
@@ -754,7 +764,11 @@ function renderShipmentsTab(t) {
 
   $('shipments-count').textContent = `共 ${rows.length} 批`;
   $('shipments-table').innerHTML = rows.length
-    ? tableHtml(['寄出日期', '快递公司', '运单号', '包裹数', '快递费', '备注'], rows, [3, 4])
+    ? tableHtml(
+      ['寄出日期', '快递公司', '运单号', '包裹数', '关联订单', '快递费', '备注'],
+      rows,
+      [3, 4, 5],
+    )
     : '<div class="empty-inline">没有匹配的转寄批次</div>';
   return rows;
 }
@@ -1030,7 +1044,7 @@ const EXPORT_CONFIG = {
   },
   shipments: {
     name: '转寄批次',
-    headers: ['寄出日期', '快递公司', '运单号', '包裹数', '快递费', '备注'],
+    headers: ['寄出日期', '快递公司', '运单号', '包裹数', '关联订单', '快递费', '备注'],
   },
   accounts: {
     name: '账号台账',

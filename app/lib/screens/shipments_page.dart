@@ -151,12 +151,16 @@ class _ShipmentsPageState extends State<ShipmentsPage> {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         child: Row(
           children: [
-            Text(shipment.carrier.isEmpty ? '快递' : shipment.carrier)
-                .fontSize(13)
+            Text(
+              shipment.carrier.isEmpty
+                  ? '—'
+                  : shipment.carrier.characters.first,
+            )
+                .fontSize(15)
                 .fontWeight(FontWeight.w700)
                 .textColor(AppColors.brandDeep)
                 .center()
-                .constrained(width: 52, height: 40)
+                .constrained(width: 40, height: 40)
                 .decorated(
                   color: AppColors.brandSoft,
                   borderRadius: BorderRadius.circular(10),

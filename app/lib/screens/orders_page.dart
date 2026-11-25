@@ -11,6 +11,7 @@ import '../core/theme.dart';
 import '../widgets/common.dart';
 import '../widgets/parcel_picker.dart';
 import 'order_form_page.dart';
+import 'tracking_scan_page.dart';
 
 /// 订单列表：检索、平台筛选与补录物流单号。
 class OrdersPage extends StatefulWidget {
@@ -195,6 +196,22 @@ class _OrdersPageState extends State<OrdersPage> {
             decoration: appInput(hint: '粘贴或输入物流单号'),
           ),
           actions: [
+            TextButton.icon(
+              onPressed: saving
+                  ? null
+                  : () async {
+                      final code = await Navigator.of(ctx).push<String>(
+                        MaterialPageRoute(
+                          builder: (_) => const TrackingScanPage(),
+                        ),
+                      );
+                      if (code == null || code.isEmpty) return;
+                      _trackingCtrl.text = code;
+                      if (ctx.mounted) setDialogState(() {});
+                    },
+              icon: const Icon(Icons.qr_code_scanner, size: 16),
+              label: const Text('扫码'),
+            ),
             TextButton.icon(
               onPressed: saving
                   ? null

@@ -11,6 +11,7 @@ import 'order_form_page.dart';
 import 'products_page.dart';
 import 'backup_sheet.dart';
 import 'scan_page.dart';
+import 'tracking_scan_page.dart';
 import 'waybill_page.dart';
 
 /// 工作台：今日概况、快捷入口与最近入库。
@@ -145,6 +146,17 @@ class _DashboardPageState extends State<DashboardPage> {
         actions: [
           TextButton.icon(
             onPressed: () async {
+              final code = await Navigator.of(ctx).push<String>(
+                MaterialPageRoute(builder: (_) => const TrackingScanPage()),
+              );
+              if (code == null || code.isEmpty) return;
+              _trackingCtrl.text = code;
+            },
+            icon: const Icon(Icons.qr_code_scanner, size: 16),
+            label: const Text('扫码'),
+          ),
+          TextButton.icon(
+            onPressed: () async {
               final picked = await showParcelPicker(ctx);
               if (picked == null) return;
               _trackingCtrl.text = picked.trackingNo;
@@ -256,16 +268,6 @@ class _DashboardPageState extends State<DashboardPage> {
                   ? '正在读取本地数据…'
                   : '今日已完成 ${stats.todayScanned} 次扫描，${stats.pending} 件等待认领',
             ).fontSize(13).textColor(AppColors.ink3).padding(top: 4),
-            _StatsGrid(stats: stats).padding(top: 18),
-            const SectionHeader(title: '经营概览'),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final range in _Range.values) _buildRangeChip(range),
-              ],
-            ),
-            _BusinessCard(summary: _summary).padding(top: 10),
             const SectionHeader(title: '快捷操作'),
             Row(
               children: [
@@ -295,6 +297,16 @@ class _DashboardPageState extends State<DashboardPage> {
                 ).expanded(),
               ],
             ),
+            _StatsGrid(stats: stats).padding(top: 18),
+            const SectionHeader(title: '经营概览'),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final range in _Range.values) _buildRangeChip(range),
+              ],
+            ),
+            _BusinessCard(summary: _summary).padding(top: 10),
             SectionHeader(
               title: '待补单号',
               trailing: _pendingOrders.isEmpty

@@ -22,3 +22,6 @@ desktop.ini
 
 # 根目录构建/截图临时产物
 /build/
+
+# 本地构建产物
+/dist/

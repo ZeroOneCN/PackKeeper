@@ -5,7 +5,7 @@
 > 到货扫码 → 待认领池 → 分配平台账号 → 代下单/补单号 → 打包转寄 → 快递费与净利润对账
 
 <p>
-  <img alt="release" src="https://img.shields.io/badge/release-1.0%20(4024)-2E7D32">
+  <img alt="release" src="https://img.shields.io/badge/release-1.0%20(4025)-2E7D32">
   <img alt="platform" src="https://img.shields.io/badge/platform-Android%208.0%2B-3DDC84">
   <img alt="flutter" src="https://img.shields.io/badge/Flutter-3.x-02569B">
   <img alt="storage" src="https://img.shields.io/badge/storage-SQLite%20v5-003B57">
@@ -31,7 +31,7 @@
 
 ## 二、界面预览
 
-> 以下均为真机截图（Android 14，1200×2670），对应构建号 4024。
+> 以下均为真机截图（Android 14，1200×2670），对应构建号 4025。
 
 | 概览 · 快捷操作置顶 | 待认领池 | 订单列表 | 转寄批次 |
 | :---: | :---: | :---: | :---: |
@@ -190,7 +190,7 @@ adb install -r -t build\app\outputs\flutter-apk\app-arm64-v8a-release.apk
 
 - 首次启动自动建库并写入 7 个平台。
 - 覆盖安装保留本地数据；数据库自动迁移。
-- Debug 验证：`flutter build apk --debug --build-number=4024`。
+- Debug 验证：`flutter build apk --debug --build-number=4025`。
 
 ### 6.2 PC 报表
 
@@ -233,7 +233,11 @@ powershell -ExecutionPolicy Bypass -File web_report\build_web.ps1
 
 ## 九、版本记录
 
-### v1.0（构建号 4024）｜2026-11-25
+### v1.0（构建号 4025）｜2026-11-25
+
+**变更**
+
+- 移除面单识别的「从相册选择」入口，仅保留拍照识别，避免误用低清相册图片导致识别失败。
 
 **新增**
 

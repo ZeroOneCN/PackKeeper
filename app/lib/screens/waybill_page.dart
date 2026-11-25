@@ -43,13 +43,14 @@ class _WaybillPageState extends State<WaybillPage> {
     super.dispose();
   }
 
-  /// 拍照或从相册取图，并执行端侧 OCR 与字段提取。
-  ///
-  /// 参数：[source] 图片来源于相机或相册。
-  Future<void> _pickAndRecognize(ImageSource source) async {
+  /// 拍照并执行端侧 OCR 与字段提取。
+  Future<void> _pickAndRecognize() async {
     XFile? file;
     try {
-      file = await _picker.pickImage(source: source, imageQuality: 85);
+      file = await _picker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 85,
+      );
     } catch (e) {
       if (mounted) showToast(context, '无法打开相机：$e');
       return;
@@ -176,25 +177,10 @@ class _WaybillPageState extends State<WaybillPage> {
               .textAlignment(TextAlign.center)
               .padding(top: 6),
           FilledButton.icon(
-            onPressed:
-                _busy ? null : () => _pickAndRecognize(ImageSource.camera),
+            onPressed: _busy ? null : _pickAndRecognize,
             icon: const Icon(Icons.photo_camera_outlined, size: 18),
             label: const Text('拍照识别'),
           ).width(double.infinity).padding(top: 20),
-          OutlinedButton.icon(
-            onPressed:
-                _busy ? null : () => _pickAndRecognize(ImageSource.gallery),
-            icon: const Icon(Icons.photo_library_outlined, size: 18),
-            label: const Text('从相册选择'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.ink2,
-              minimumSize: const Size(0, 46),
-              side: const BorderSide(color: AppColors.line),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ).width(double.infinity).padding(top: 10),
         ],
       ),
     );
@@ -224,11 +210,7 @@ class _WaybillPageState extends State<WaybillPage> {
                   borderRadius: BorderRadius.all(Radius.circular(999)),
                 ),
               )
-              .gestures(
-                onTap: _busy
-                    ? null
-                    : () => _pickAndRecognize(ImageSource.camera),
-              )
+              .gestures(onTap: _busy ? null : _pickAndRecognize)
               .clipRRect(all: 999)
               .decorated(
                 color: Colors.black54,

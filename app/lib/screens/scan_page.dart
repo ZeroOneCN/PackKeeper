@@ -77,8 +77,13 @@ class _ScanPageState extends State<ScanPage> {
     }
     _lastCode = info.normalized;
     _lastAt = now;
+    // 有效扫码统一震动反馈（包括重复单号）。
+    HapticFeedback.mediumImpact();
 
-    if (_entries.containsKey(info.normalized)) return;
+    if (_entries.containsKey(info.normalized)) {
+      _toast('该单号已在本次扫描列表中');
+      return;
+    }
 
     final existing = await AppDatabase.instance.findByTracking(info.normalized);
     if (!mounted) return;
@@ -89,7 +94,9 @@ class _ScanPageState extends State<ScanPage> {
         source: ParcelSource.barcode,
       );
     });
-    HapticFeedback.mediumImpact();
+    if (existing != null) {
+      _toast('该单号已在库中（${existing.status.label}），不会重复入库');
+    }
   }
 
   /// 手动输入单号（面单条码破损时的降级通道）。

@@ -143,34 +143,57 @@ class _DashboardPageState extends State<DashboardPage> {
           textCapitalization: TextCapitalization.characters,
           decoration: appInput(hint: '粘贴或扫码填入物流单号'),
         ),
+        actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
         actions: [
-          TextButton.icon(
-            onPressed: () async {
-              final code = await Navigator.of(ctx).push<String>(
-                MaterialPageRoute(builder: (_) => const TrackingScanPage()),
-              );
-              if (code == null || code.isEmpty) return;
-              _trackingCtrl.text = code;
-            },
-            icon: const Icon(Icons.qr_code_scanner, size: 16),
-            label: const Text('扫码'),
-          ),
-          TextButton.icon(
-            onPressed: () async {
-              final picked = await showParcelPicker(ctx);
-              if (picked == null) return;
-              _trackingCtrl.text = picked.trackingNo;
-            },
-            icon: const Icon(Icons.inbox_outlined, size: 16),
-            label: const Text('从池子选择'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, _trackingCtrl.text.trim()),
-            child: const Text('保存'),
+          Row(
+            children: [
+              TextButton.icon(
+                style: compactDialogButton,
+                onPressed: () async {
+                  final code = await Navigator.of(ctx).push<String>(
+                    MaterialPageRoute(builder: (_) => const TrackingScanPage()),
+                  );
+                  if (code == null || code.isEmpty) return;
+                  final existing = await AppDatabase.instance.findByTracking(
+                    code,
+                  );
+                  if (!ctx.mounted) return;
+                  _trackingCtrl.text = code;
+                  if (existing != null) {
+                    showToast(
+                      ctx,
+                      '该单号已在库中（${existing.status.label}），保存后自动绑定',
+                    );
+                  }
+                },
+                icon: const Icon(Icons.qr_code_scanner, size: 16),
+                label: const Text('扫码'),
+              ),
+              Tooltip(
+                message: '从待认领池选择单号',
+                child: TextButton(
+                  style: compactDialogButton,
+                  onPressed: () async {
+                    final picked = await showParcelPicker(ctx);
+                    if (picked == null) return;
+                    _trackingCtrl.text = picked.trackingNo;
+                  },
+                  child: const Text('选择'),
+                ),
+              ),
+              const Spacer(),
+              TextButton(
+                style: compactDialogButton,
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('取消'),
+              ),
+              const SizedBox(width: 4),
+              FilledButton(
+                style: compactDialogFilledButton,
+                onPressed: () => Navigator.pop(ctx, _trackingCtrl.text.trim()),
+                child: const Text('保存'),
+              ),
+            ],
           ),
         ],
       ),

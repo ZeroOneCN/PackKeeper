@@ -195,63 +195,85 @@ class _OrdersPageState extends State<OrdersPage> {
             textCapitalization: TextCapitalization.characters,
             decoration: appInput(hint: '粘贴或输入物流单号'),
           ),
+          actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
           actions: [
-            TextButton.icon(
-              onPressed: saving
-                  ? null
-                  : () async {
-                      final code = await Navigator.of(ctx).push<String>(
-                        MaterialPageRoute(
-                          builder: (_) => const TrackingScanPage(),
-                        ),
-                      );
-                      if (code == null || code.isEmpty) return;
-                      _trackingCtrl.text = code;
-                      if (ctx.mounted) setDialogState(() {});
-                    },
-              icon: const Icon(Icons.qr_code_scanner, size: 16),
-              label: const Text('扫码'),
-            ),
-            TextButton.icon(
-              onPressed: saving
-                  ? null
-                  : () async {
-                      final picked = await showParcelPicker(ctx);
-                      if (picked == null) return;
-                      _trackingCtrl.text = picked.trackingNo;
-                      setDialogState(() {});
-                    },
-              icon: const Icon(Icons.inbox_outlined, size: 16),
-              label: const Text('从池子选择'),
-            ),
-            TextButton(
-              onPressed: saving ? null : () => Navigator.pop(ctx, false),
-              child: const Text('取消'),
-            ),
-            FilledButton(
-              onPressed: saving
-                  ? null
-                  : () async {
-                      final value = _trackingCtrl.text.trim();
-                      if (value.isEmpty) {
-                        showToast(ctx, '请填写物流单号');
-                        return;
-                      }
-                      setDialogState(() => saving = true);
-                      try {
-                        await AppDatabase.instance.updateOrderTracking(
-                          orderId: view.order.id,
-                          trackingNo: value,
-                        );
-                        if (ctx.mounted) Navigator.pop(ctx, true);
-                      } catch (_) {
-                        if (ctx.mounted) {
-                          setDialogState(() => saving = false);
-                          showToast(ctx, '保存失败，请重试');
-                        }
-                      }
-                    },
-              child: Text(saving ? '保存中…' : '保存'),
+            Row(
+              children: [
+                TextButton.icon(
+                  style: compactDialogButton,
+                  onPressed: saving
+                      ? null
+                      : () async {
+                          final code = await Navigator.of(ctx).push<String>(
+                            MaterialPageRoute(
+                              builder: (_) => const TrackingScanPage(),
+                            ),
+                          );
+                          if (code == null || code.isEmpty) return;
+                          final existing = await AppDatabase.instance
+                              .findByTracking(code);
+                          if (!ctx.mounted) return;
+                          _trackingCtrl.text = code;
+                          setDialogState(() {});
+                          if (existing != null) {
+                            showToast(
+                              ctx,
+                              '该单号已在库中（${existing.status.label}），保存后自动绑定',
+                            );
+                          }
+                        },
+                  icon: const Icon(Icons.qr_code_scanner, size: 16),
+                  label: const Text('扫码'),
+                ),
+                Tooltip(
+                  message: '从待认领池选择单号',
+                  child: TextButton(
+                    style: compactDialogButton,
+                    onPressed: saving
+                        ? null
+                        : () async {
+                            final picked = await showParcelPicker(ctx);
+                            if (picked == null) return;
+                            _trackingCtrl.text = picked.trackingNo;
+                            setDialogState(() {});
+                          },
+                    child: const Text('选择'),
+                  ),
+                ),
+                const Spacer(),
+                TextButton(
+                  style: compactDialogButton,
+                  onPressed: saving ? null : () => Navigator.pop(ctx, false),
+                  child: const Text('取消'),
+                ),
+                const SizedBox(width: 4),
+                FilledButton(
+                  style: compactDialogFilledButton,
+                  onPressed: saving
+                      ? null
+                      : () async {
+                          final value = _trackingCtrl.text.trim();
+                          if (value.isEmpty) {
+                            showToast(ctx, '请填写物流单号');
+                            return;
+                          }
+                          setDialogState(() => saving = true);
+                          try {
+                            await AppDatabase.instance.updateOrderTracking(
+                              orderId: view.order.id,
+                              trackingNo: value,
+                            );
+                            if (ctx.mounted) Navigator.pop(ctx, true);
+                          } catch (_) {
+                            if (ctx.mounted) {
+                              setDialogState(() => saving = false);
+                              showToast(ctx, '保存失败，请重试');
+                            }
+                          }
+                        },
+                  child: Text(saving ? '保存中…' : '保存'),
+                ),
+              ],
             ),
           ],
         ),

@@ -60,8 +60,12 @@ class _ScanCapturePageState extends State<ScanCapturePage> {
       }
       _lastCode = info.normalized;
       _lastAt = now;
-      if (_entries.containsKey(info.normalized)) continue;
+      // 有效扫码统一震动反馈（包括重复单号）。
       HapticFeedback.mediumImpact();
+      if (_entries.containsKey(info.normalized)) {
+        _toast('该单号已在本次列表中');
+        continue;
+      }
       setState(() => _entries[info.normalized] = info);
     }
   }

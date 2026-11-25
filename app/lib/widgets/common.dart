@@ -246,3 +246,17 @@ void showToast(BuildContext context, String message) {
     ..hideCurrentSnackBar()
     ..showSnackBar(SnackBar(content: Text(message)));
 }
+
+/// 弹窗内紧凑文字按钮样式：让「扫码 / 选择 / 取消 / 保存」并列一行。
+final ButtonStyle compactDialogButton = TextButton.styleFrom(
+  padding: const EdgeInsets.symmetric(horizontal: 8),
+  minimumSize: const Size(0, 40),
+  visualDensity: VisualDensity.compact,
+);
+
+/// 弹窗内紧凑实心按钮样式，与 [compactDialogButton] 高度对齐。
+final ButtonStyle compactDialogFilledButton = FilledButton.styleFrom(
+  padding: const EdgeInsets.symmetric(horizontal: 16),
+  minimumSize: const Size(0, 40),
+  visualDensity: VisualDensity.compact,
+);

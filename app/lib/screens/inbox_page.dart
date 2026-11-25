@@ -202,6 +202,8 @@ class _InboxPageState extends State<InboxPage> {
               _buildFilterChip('全部', null),
               _buildFilterChip('待认领', ParcelStatus.pending),
               _buildFilterChip('已分配', ParcelStatus.assigned),
+              _buildFilterChip('已入库', ParcelStatus.inbound),
+              _buildFilterChip('已出库', ParcelStatus.outbound),
               _buildFilterChip('异常件', ParcelStatus.exception),
             ],
           ).height(40),

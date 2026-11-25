@@ -93,7 +93,7 @@ class _BackupSheetState extends State<_BackupSheet> {
           data is Map && data[table] is List ? (data[table]! as List).length : 0;
       final summary = '平台 ${countOf('platforms')} / 账号 ${countOf('accounts')} / '
           '商品 ${countOf('products')} / 包裹 ${countOf('parcels')} / '
-          '订单 ${countOf('orders')}';
+          '订单 ${countOf('orders')} / 转寄 ${countOf('shipments')}';
       if (!mounted) return;
       final confirmed = await showDialog<bool>(
         context: context,
@@ -149,7 +149,7 @@ class _BackupSheetState extends State<_BackupSheet> {
               style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
             ),
           ),
-          const Text('备份为 JSON 文件，包含平台、账号、商品、包裹与订单，可换机恢复。')
+          const Text('备份为 JSON 文件，包含平台、账号、商品、包裹、转寄批次与订单，可换机恢复。')
               .fontSize(12)
               .textColor(AppColors.ink3)
               .textStyle(const TextStyle(height: 1.5))

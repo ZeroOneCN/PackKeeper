@@ -541,7 +541,7 @@ enum _Range {
   }
 }
 
-/// 经营概览卡片：订单数、销售额、成本与利润。
+/// 经营概览卡片：订单数、销售额、成本、快递费、净利润与客单价。
 class _BusinessCard extends StatelessWidget {
   const _BusinessCard({required this.summary});
 
@@ -553,41 +553,58 @@ class _BusinessCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final profit = summary?.profit ?? 0;
+    final netProfit = summary?.netProfit ?? 0;
+    final orderCount = summary?.orderCount ?? 0;
+    final sales = summary?.sales ?? 0.0;
+    final avg = orderCount > 0 ? sales / orderCount : 0.0;
     final items = <(String, String, Color)>[
-      ('订单', '${summary?.orderCount ?? 0}', AppColors.ink),
+      ('订单', '$orderCount', AppColors.ink),
       ('销售额', '¥${_money(summary?.sales)}', AppColors.ink),
       ('成本', '¥${_money(summary?.cost)}', AppColors.ink),
       (
-        '利润',
-        '¥${_money(summary?.profit)}',
-        profit >= 0 ? AppColors.brandDeep : AppColors.danger,
+        '快递费',
+        '¥${_money(summary?.shippingFee)}',
+        (summary?.shippingFee ?? 0) > 0 ? AppColors.warn : AppColors.ink,
       ),
+      (
+        '净利润',
+        '¥${_money(summary?.netProfit)}',
+        netProfit >= 0 ? AppColors.brandDeep : AppColors.danger,
+      ),
+      ('客单价', '¥${_money(avg)}', AppColors.ink),
     ];
     return AppCard(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       child: Column(
         children: [
-          Row(
-            children: [
-              _buildCell(items[0]).expanded(),
-              Container(width: 1, height: 34, color: AppColors.line),
-              _buildCell(items[1]).expanded(),
-            ],
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            child: Container(height: 1, color: AppColors.line),
-          ),
-          Row(
-            children: [
-              _buildCell(items[2]).expanded(),
-              Container(width: 1, height: 34, color: AppColors.line),
-              _buildCell(items[3]).expanded(),
-            ],
-          ),
+          _buildRow(items[0], items[1]),
+          _divider(),
+          _buildRow(items[2], items[3]),
+          _divider(),
+          _buildRow(items[4], items[5]),
         ],
       ),
+    );
+  }
+
+  /// 两列指标行。
+  ///
+  /// 参数：[left] 左侧指标；[right] 右侧指标。
+  Widget _buildRow((String, String, Color) left, (String, String, Color) right) {
+    return Row(
+      children: [
+        _buildCell(left).expanded(),
+        Container(width: 1, height: 34, color: AppColors.line),
+        _buildCell(right).expanded(),
+      ],
+    );
+  }
+
+  /// 行间分隔线。
+  Widget _divider() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Container(height: 1, color: AppColors.line),
     );
   }
 

@@ -291,14 +291,63 @@ class BusinessSummary {
     required this.orderCount,
     required this.sales,
     required this.cost,
+    this.shippingFee = 0,
   });
 
   final int orderCount;
   final double sales;
   final double cost;
 
-  /// 利润 = 销售额 - 成本。
+  /// 区间内转寄批次产生的快递费合计。
+  final double shippingFee;
+
+  /// 毛利 = 销售额 - 商品成本。
   double get profit => sales - cost;
+
+  /// 净利润 = 销售额 - 商品成本 - 快递费。
+  double get netProfit => sales - cost - shippingFee;
+}
+
+/// 转寄批次：一次寄件把多个包裹寄给上家，快递费记在批次上。
+class ShipmentModel {
+  const ShipmentModel({
+    required this.id,
+    required this.carrier,
+    required this.trackingNo,
+    required this.fee,
+    required this.shippedAt,
+    required this.note,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String carrier;
+  final String trackingNo;
+  final double fee;
+  final int shippedAt;
+  final String note;
+  final int createdAt;
+
+  /// 从数据库行还原转寄批次。
+  factory ShipmentModel.fromMap(Map<String, Object?> map) {
+    return ShipmentModel(
+      id: map['id'] as String,
+      carrier: (map['carrier'] as String?) ?? '',
+      trackingNo: (map['tracking_no'] as String?) ?? '',
+      fee: ((map['fee'] as num?) ?? 0).toDouble(),
+      shippedAt: (map['shipped_at'] as int?) ?? 0,
+      note: (map['note'] as String?) ?? '',
+      createdAt: (map['created_at'] as int?) ?? 0,
+    );
+  }
+}
+
+/// 转寄批次列表项：批次信息 + 包裹数量。
+class ShipmentView {
+  const ShipmentView({required this.shipment, required this.parcelCount});
+
+  final ShipmentModel shipment;
+  final int parcelCount;
 }
 
 /// 首页统计快照。

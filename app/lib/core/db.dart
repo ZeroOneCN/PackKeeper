@@ -47,7 +47,7 @@ class AppDatabase {
     final path = p.join(dir, 'packkeeper.db');
     _db = await openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
@@ -77,6 +77,23 @@ class AppDatabase {
     }
     if (oldVersion < 3) {
       await _applyPlatformOrder(db);
+    }
+    if (oldVersion < 4) {
+      await db.execute('''
+        CREATE TABLE shipments (
+          id TEXT PRIMARY KEY,
+          carrier TEXT NOT NULL DEFAULT '',
+          tracking_no TEXT NOT NULL DEFAULT '',
+          fee REAL NOT NULL DEFAULT 0,
+          shipped_at INTEGER NOT NULL,
+          note TEXT NOT NULL DEFAULT '',
+          created_at INTEGER NOT NULL
+        )
+      ''');
+      await db.execute('ALTER TABLE parcels ADD COLUMN shipment_id TEXT');
+      await db.execute(
+        'CREATE INDEX idx_parcels_shipment ON parcels (shipment_id)',
+      );
     }
   }
 
@@ -148,6 +165,7 @@ class AppDatabase {
         media_path TEXT NOT NULL DEFAULT '',
         account_id TEXT,
         order_id TEXT,
+        shipment_id TEXT,
         note TEXT NOT NULL DEFAULT '',
         FOREIGN KEY (account_id) REFERENCES accounts (id)
       )
@@ -182,6 +200,17 @@ class AppDatabase {
       )
     ''');
     await db.execute('''
+      CREATE TABLE shipments (
+        id TEXT PRIMARY KEY,
+        carrier TEXT NOT NULL DEFAULT '',
+        tracking_no TEXT NOT NULL DEFAULT '',
+        fee REAL NOT NULL DEFAULT 0,
+        shipped_at INTEGER NOT NULL,
+        note TEXT NOT NULL DEFAULT '',
+        created_at INTEGER NOT NULL
+      )
+    ''');
+    await db.execute('''
       CREATE TABLE scan_events (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         tracking_no TEXT NOT NULL,
@@ -201,6 +230,9 @@ class AppDatabase {
     ''');
     await db.execute('CREATE INDEX idx_parcels_status ON parcels (status)');
     await db.execute('CREATE INDEX idx_parcels_scanned ON parcels (scanned_at)');
+    await db.execute(
+      'CREATE INDEX idx_parcels_shipment ON parcels (shipment_id)',
+    );
     await db.execute('CREATE INDEX idx_accounts_platform ON accounts (platform_id)');
     await db.execute('CREATE INDEX idx_orders_tracking ON orders (tracking_no)');
 
@@ -480,6 +512,167 @@ class AppDatabase {
       limit: limit,
     );
     return rows.map(ParcelModel.fromMap).toList();
+  }
+
+  /// 可加入转寄批次的包裹：尚未寄出、未完成且未关联批次。
+  Future<List<ParcelModel>> shipableParcels() async {
+    final db = await database;
+    final rows = await db.query(
+      'parcels',
+      where: 'shipment_id IS NULL AND status IN (?, ?, ?)',
+      whereArgs: [
+        ParcelStatus.pending.name,
+        ParcelStatus.assigned.name,
+        ParcelStatus.inbound.name,
+      ],
+      orderBy: 'scanned_at DESC',
+      limit: 500,
+    );
+    return rows.map(ParcelModel.fromMap).toList();
+  }
+
+  /// 查询转寄批次列表（带包裹数量）。
+  ///
+  /// 参数：[keyword] 可选快递公司/运单号/备注模糊搜索。
+  Future<List<ShipmentView>> shipments({String keyword = ''}) async {
+    final db = await database;
+    final where = <String>[];
+    final args = <Object?>[];
+    final trimmed = keyword.trim();
+    if (trimmed.isNotEmpty) {
+      where.add('(s.carrier LIKE ? OR s.tracking_no LIKE ? OR s.note LIKE ?)');
+      final like = '%$trimmed%';
+      args.addAll([like, like, like]);
+    }
+    final rows = await db.rawQuery(
+      '''
+      SELECT s.*,
+             (SELECT COUNT(*) FROM parcels p WHERE p.shipment_id = s.id) AS parcel_count
+      FROM shipments s
+      ${where.isEmpty ? '' : 'WHERE ${where.join(' AND ')}'}
+      ORDER BY s.shipped_at DESC, s.created_at DESC
+      ''',
+      args,
+    );
+    return rows
+        .map(
+          (row) => ShipmentView(
+            shipment: ShipmentModel.fromMap(row),
+            parcelCount: (row['parcel_count'] as int?) ?? 0,
+          ),
+        )
+        .toList();
+  }
+
+  /// 查询批次已关联的包裹主键集合。
+  ///
+  /// 参数：[shipmentId] 批次主键。
+  Future<Set<String>> shipmentParcelIds(String shipmentId) async {
+    final db = await database;
+    final rows = await db.query(
+      'parcels',
+      columns: ['id'],
+      where: 'shipment_id = ?',
+      whereArgs: [shipmentId],
+    );
+    return rows.map((row) => row['id'] as String).toSet();
+  }
+
+  /// 新建转寄批次：写入批次并把所选包裹置为已出库。
+  ///
+  /// 参数：[carrier] 快递公司；[trackingNo] 运单号；[fee] 快递费；
+  /// [shippedAt] 寄出时间；[note] 备注；[parcelIds] 关联包裹主键。
+  /// 返回：新批次主键。
+  Future<String> addShipment({
+    required String carrier,
+    required String trackingNo,
+    required double fee,
+    required int shippedAt,
+    String note = '',
+    required List<String> parcelIds,
+  }) async {
+    final db = await database;
+    final id = _uuid.v4();
+    await db.transaction((txn) async {
+      await txn.insert('shipments', {
+        'id': id,
+        'carrier': carrier.trim(),
+        'tracking_no': trackingNo.trim(),
+        'fee': fee,
+        'shipped_at': shippedAt,
+        'note': note.trim(),
+        'created_at': DateTime.now().millisecondsSinceEpoch,
+      });
+      if (parcelIds.isNotEmpty) {
+        final placeholders = List.filled(parcelIds.length, '?').join(', ');
+        await txn.rawUpdate(
+          'UPDATE parcels SET shipment_id = ?, status = ? WHERE id IN ($placeholders)',
+          [id, ParcelStatus.outbound.name, ...parcelIds],
+        );
+      }
+      await _audit(
+        txn,
+        'shipment.create',
+        'shipment',
+        id,
+        '${carrier.trim()} ${trackingNo.trim()} 运费 ${fee.toStringAsFixed(2)}',
+      );
+    });
+    return id;
+  }
+
+  /// 修改转寄批次的基础信息。
+  ///
+  /// 参数：[id] 批次主键；[carrier] 快递公司；[trackingNo] 运单号；
+  /// [fee] 快递费；[shippedAt] 寄出时间；[note] 备注。
+  Future<void> updateShipment({
+    required String id,
+    required String carrier,
+    required String trackingNo,
+    required double fee,
+    required int shippedAt,
+    String note = '',
+  }) async {
+    final db = await database;
+    await db.update(
+      'shipments',
+      {
+        'carrier': carrier.trim(),
+        'tracking_no': trackingNo.trim(),
+        'fee': fee,
+        'shipped_at': shippedAt,
+        'note': note.trim(),
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    await _audit(
+      db,
+      'shipment.update',
+      'shipment',
+      id,
+      '${carrier.trim()} ${trackingNo.trim()} 运费 ${fee.toStringAsFixed(2)}',
+    );
+  }
+
+  /// 删除转寄批次：包裹保留并恢复为已入库。
+  ///
+  /// 参数：[id] 批次主键。
+  Future<void> deleteShipment(String id) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.update(
+        'parcels',
+        {
+          'shipment_id': null,
+          'status': ParcelStatus.inbound.name,
+        },
+        where: 'shipment_id = ?',
+        whereArgs: [id],
+      );
+      await txn.delete('shipments', where: 'id = ?', whereArgs: [id]);
+      await _audit(txn, 'shipment.delete', 'shipment', id, '');
+    });
   }
 
   /// 查询最近入库的包裹，用于首页。
@@ -870,15 +1063,17 @@ class AppDatabase {
     await _audit(db, 'order.delete', 'order', id, label);
   }
 
-  /// 统计某个时间区间内的订单经营数据（销售额、成本、利润）。
+  /// 统计某个时间区间内的订单经营数据（销售额、成本、快递费、净利润）。
   ///
   /// 参数：[start] 统计起始时间（含）；[end] 可选结束时间（不含）。
   Future<BusinessSummary> orderSummary(DateTime start, {DateTime? end}) async {
     final db = await database;
     final args = <Object?>[start.millisecondsSinceEpoch];
     var where = 'ordered_at >= ?';
+    var feeWhere = 'shipped_at >= ?';
     if (end != null) {
       where += ' AND ordered_at < ?';
+      feeWhere += ' AND shipped_at < ?';
       args.add(end.millisecondsSinceEpoch);
     }
     final rows = await db.rawQuery(
@@ -890,14 +1085,27 @@ class AppDatabase {
       ''',
       args,
     );
+    final feeRows = await db.rawQuery(
+      'SELECT COALESCE(SUM(fee), 0) AS fee FROM shipments WHERE $feeWhere',
+      args,
+    );
+    final shippingFee = feeRows.isEmpty
+        ? 0.0
+        : (((feeRows.first['fee'] as num?) ?? 0)).toDouble();
     if (rows.isEmpty) {
-      return const BusinessSummary(orderCount: 0, sales: 0, cost: 0);
+      return BusinessSummary(
+        orderCount: 0,
+        sales: 0,
+        cost: 0,
+        shippingFee: shippingFee,
+      );
     }
     final row = rows.first;
     return BusinessSummary(
       orderCount: (row['c'] as int?) ?? 0,
       sales: ((row['sales'] as num?) ?? 0).toDouble(),
       cost: ((row['cost'] as num?) ?? 0).toDouble(),
+      shippingFee: shippingFee,
     );
   }
 
@@ -1043,6 +1251,7 @@ class AppDatabase {
       'products',
       'parcels',
       'orders',
+      'shipments',
       'scan_events',
       'audit_logs',
     ]) {
@@ -1050,7 +1259,7 @@ class AppDatabase {
     }
     return {
       'app': 'packkeeper',
-      'version': 2,
+      'version': 3,
       'exported_at': DateTime.now().millisecondsSinceEpoch,
       'data': data,
     };
@@ -1075,6 +1284,7 @@ class AppDatabase {
       'products',
       'parcels',
       'orders',
+      'shipments',
       'scan_events',
       'audit_logs',
     ]) {
@@ -1094,6 +1304,7 @@ class AppDatabase {
       for (final table in const [
         'parcels',
         'orders',
+        'shipments',
         'products',
         'accounts',
         'platforms',
@@ -1106,6 +1317,7 @@ class AppDatabase {
         'platforms',
         'products',
         'accounts',
+        'shipments',
         'parcels',
         'orders',
         'scan_events',
@@ -1140,7 +1352,7 @@ class AppDatabase {
 
   /// 写一条审计日志。
   Future<void> _audit(
-    Database db,
+    DatabaseExecutor db,
     String action,
     String targetType,
     String targetId,

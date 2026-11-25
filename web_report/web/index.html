@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>包裹管家 · 数据报表</title>
+    <title>包裹管家 · 管理后台</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -11,15 +11,12 @@
       <div class="brand">
         <span class="logo">包</span>
         <div class="brand-text">
-          <h1>包裹管家 · 数据报表</h1>
-          <p>导入手机 App 导出的 JSON，自动分析经营数据并导出 CSV</p>
+          <h1>包裹管家 · 管理后台</h1>
+          <p>导入手机 App 导出的 JSON，在本机查看与导出全部经营数据</p>
         </div>
       </div>
       <div class="actions">
         <button id="btn-import" class="btn primary" type="button">导入 JSON</button>
-        <button id="btn-export-orders" class="btn" type="button" disabled>订单 CSV</button>
-        <button id="btn-export-parcels" class="btn" type="button" disabled>包裹 CSV</button>
-        <button id="btn-export-summary" class="btn" type="button" disabled>汇总 CSV</button>
         <button id="btn-clear" class="btn danger" type="button" disabled>清空数据</button>
       </div>
     </header>
@@ -42,63 +39,159 @@
       <section id="report" hidden>
         <div id="meta" class="meta"></div>
 
-        <div class="range-bar">
-          <div>
-            <h2>经营分析</h2>
-            <p id="range-hint" class="range-hint"></p>
-          </div>
-          <div id="range-group" class="segmented">
-            <button type="button" data-range="all" class="active">全部</button>
-            <button type="button" data-range="month">本月</button>
-            <button type="button" data-range="quarter">近3月</button>
-            <button type="button" data-range="year">本年</button>
-          </div>
-        </div>
+        <nav id="tabs" class="tabs">
+          <button type="button" data-tab="overview" class="active">概览</button>
+          <button type="button" data-tab="orders">订单</button>
+          <button type="button" data-tab="parcels">包裹</button>
+          <button type="button" data-tab="accounts">账号</button>
+          <button type="button" data-tab="platforms">平台</button>
+          <button type="button" data-tab="products">商品</button>
+          <button type="button" data-tab="audit">审计</button>
+        </nav>
 
-        <div id="kpis" class="kpis"></div>
+        <section id="panel-overview" class="panel">
+          <div class="range-bar">
+            <div>
+              <h2>经营分析</h2>
+              <p id="range-hint" class="range-hint"></p>
+            </div>
+            <div class="range-actions">
+              <div id="range-group" class="segmented">
+                <button type="button" data-range="all" class="active">全部</button>
+                <button type="button" data-range="month">本月</button>
+                <button type="button" data-range="quarter">近3月</button>
+                <button type="button" data-range="year">本年</button>
+              </div>
+              <button id="btn-export-summary" class="btn" type="button">
+                导出汇总 CSV
+              </button>
+            </div>
+          </div>
 
-        <div class="grid two">
+          <div id="kpis" class="kpis"></div>
+
+          <div class="grid two">
+            <section class="card">
+              <div class="card-head">
+                <h3>平台表现</h3>
+                <span class="card-tip">按订单金额汇总</span>
+              </div>
+              <div id="platform-table" class="table-wrap"></div>
+            </section>
+            <section class="card">
+              <div class="card-head">
+                <h3>账号表现</h3>
+                <span class="card-tip">按订单金额汇总</span>
+              </div>
+              <div id="account-table" class="table-wrap"></div>
+            </section>
+          </div>
+
           <section class="card">
             <div class="card-head">
-              <h3>平台表现</h3>
-              <span class="card-tip">按订单金额汇总</span>
+              <h3>近 12 个月销售趋势</h3>
+              <span class="card-tip">柱高为销售额，括号内为订单数</span>
             </div>
-            <div id="platform-table" class="table-wrap"></div>
+            <div id="trend" class="bar-chart"></div>
           </section>
+
+          <div class="grid two">
+            <section class="card">
+              <div class="card-head"><h3>包裹状态</h3></div>
+              <div id="parcel-status" class="stat-list"></div>
+            </section>
+            <section class="card">
+              <div class="card-head"><h3>快递公司分布</h3></div>
+              <div id="carrier" class="stat-list"></div>
+            </section>
+          </div>
+
           <section class="card">
             <div class="card-head">
-              <h3>账号表现</h3>
-              <span class="card-tip">按订单金额汇总</span>
+              <h3>待补物流单号</h3>
+              <span class="card-tip">下单后尚未回填物流单号的订单</span>
             </div>
-            <div id="account-table" class="table-wrap"></div>
+            <div id="pending-orders" class="table-wrap"></div>
           </section>
-        </div>
-
-        <section class="card">
-          <div class="card-head">
-            <h3>近 12 个月销售趋势</h3>
-            <span class="card-tip">柱高为销售额，括号内为订单数</span>
-          </div>
-          <div id="trend" class="bar-chart"></div>
         </section>
 
-        <div class="grid two">
-          <section class="card">
-            <div class="card-head"><h3>包裹状态</h3></div>
-            <div id="parcel-status" class="stat-list"></div>
-          </section>
-          <section class="card">
-            <div class="card-head"><h3>快递公司分布</h3></div>
-            <div id="carrier" class="stat-list"></div>
-          </section>
-        </div>
-
-        <section class="card">
-          <div class="card-head">
-            <h3>待补物流单号</h3>
-            <span class="card-tip">下单后尚未回填物流单号的订单</span>
+        <section id="panel-orders" class="panel" hidden>
+          <div class="toolbar">
+            <input id="orders-search" class="search" type="search"
+              placeholder="搜索标题、单号、地址或账号" />
+            <select id="orders-platform" class="select"></select>
+            <span id="orders-count" class="toolbar-tip"></span>
+            <button id="orders-export" class="btn" type="button">导出筛选结果 CSV</button>
           </div>
-          <div id="pending-orders" class="table-wrap"></div>
+          <section class="card">
+            <div id="orders-table" class="table-wrap"></div>
+          </section>
+        </section>
+
+        <section id="panel-parcels" class="panel" hidden>
+          <div class="toolbar">
+            <input id="parcels-search" class="search" type="search"
+              placeholder="搜索运单号、快递公司或备注" />
+            <select id="parcels-status" class="select">
+              <option value="">全部状态</option>
+              <option value="pending">待认领</option>
+              <option value="assigned">已分配</option>
+              <option value="exception">异常件</option>
+            </select>
+            <span id="parcels-count" class="toolbar-tip"></span>
+            <button id="parcels-export" class="btn" type="button">导出筛选结果 CSV</button>
+          </div>
+          <section class="card">
+            <div id="parcels-table" class="table-wrap"></div>
+          </section>
+        </section>
+
+        <section id="panel-accounts" class="panel" hidden>
+          <div class="toolbar">
+            <input id="accounts-search" class="search" type="search"
+              placeholder="搜索账号别名或备注" />
+            <select id="accounts-platform" class="select"></select>
+            <span id="accounts-count" class="toolbar-tip"></span>
+            <button id="accounts-export" class="btn" type="button">导出筛选结果 CSV</button>
+          </div>
+          <section class="card">
+            <div id="accounts-table" class="table-wrap"></div>
+          </section>
+        </section>
+
+        <section id="panel-platforms" class="panel" hidden>
+          <div class="toolbar">
+            <input id="platforms-search" class="search" type="search" placeholder="搜索平台名称" />
+            <span id="platforms-count" class="toolbar-tip"></span>
+            <button id="platforms-export" class="btn" type="button">导出筛选结果 CSV</button>
+          </div>
+          <section class="card">
+            <div id="platforms-table" class="table-wrap"></div>
+          </section>
+        </section>
+
+        <section id="panel-products" class="panel" hidden>
+          <div class="toolbar">
+            <input id="products-search" class="search" type="search"
+              placeholder="搜索商品名称、规格或备注" />
+            <span id="products-count" class="toolbar-tip"></span>
+            <button id="products-export" class="btn" type="button">导出筛选结果 CSV</button>
+          </div>
+          <section class="card">
+            <div id="products-table" class="table-wrap"></div>
+          </section>
+        </section>
+
+        <section id="panel-audit" class="panel" hidden>
+          <div class="toolbar">
+            <input id="audit-search" class="search" type="search"
+              placeholder="搜索动作、对象或详情" />
+            <span id="audit-count" class="toolbar-tip"></span>
+            <button id="audit-export" class="btn" type="button">导出筛选结果 CSV</button>
+          </div>
+          <section class="card">
+            <div id="audit-table" class="table-wrap"></div>
+          </section>
         </section>
       </section>
     </main>

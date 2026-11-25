@@ -15,9 +15,32 @@ const PARCEL_SOURCE = { scan: '扫码', ocr: '面单', manual: '手动' };
 const ORDER_STATUS = { created: '已建单' };
 /** 履约路径中文名。 */
 const ORDER_ROUTE = { warehouse: '仓库', direct: '直送' };
+/** 审计动作中文名。 */
+const AUDIT_ACTION = {
+  'platform.create': '新增平台',
+  'platform.update': '修改平台',
+  'platform.delete': '删除平台',
+  'account.create': '新增账号',
+  'account.update': '修改账号',
+  'account.delete': '删除账号',
+  'parcel.create': '包裹入库',
+  'parcel.delete': '删除包裹',
+  'parcel.assigned_by_order': '订单自动关联包裹',
+  'order.create': '新增订单',
+  'order.tracking': '补录物流单号',
+  'product.create': '新增商品',
+  'product.update': '修改商品',
+  'product.delete': '删除商品',
+};
+
+/** 管理后台页签。 */
+const TABS = ['overview', 'orders', 'parcels', 'accounts', 'platforms', 'products', 'audit'];
 
 /** 页面状态。 */
-const state = { dataset: null, range: 'all' };
+const state = { dataset: null, range: 'all', tab: 'overview' };
+
+/** 各数据页签最近一次渲染的行，用于导出与当前筛选保持一致。 */
+const lastRows = {};
 
 /** 快捷获取元素。 */
 const $ = (id) => document.getElementById(id);
@@ -70,6 +93,13 @@ function fmtDate(ms, withTime = true) {
   const pad = (n) => String(n).padStart(2, '0');
   const date = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   return withTime ? `${date} ${pad(d.getHours())}:${pad(d.getMinutes())}` : date;
+}
+
+/** 生成文件名用的时间戳。 */
+function stamp() {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
 }
 
 /** 提示浮层。 */
@@ -228,6 +258,10 @@ function groupOrders(orders, keyFn) {
 
 /**
  * 生成表格 HTML。
+ *
+ * 单元格支持字符串、数字，或 `{html, text}` 对象：html 用于页面展示，
+ * text 用于导出 CSV，避免金额等展示文本混入原始数据。
+ *
  * @param {string[]} headers 表头
  * @param {Array<Array<*>>} rows 行数据
  * @param {number[]} numericCols 需要右对齐的列下标
@@ -244,7 +278,8 @@ function tableHtml(headers, rows, numericCols = []) {
         row
           .map((cell, i) => {
             const cls = numericCols.includes(i) ? 'num' : '';
-            const value = cell && typeof cell === 'object' && 'html' in cell ? cell.html : esc(cell);
+            const isObj = cell && typeof cell === 'object';
+            const value = isObj ? cell.html : esc(cell);
             return `<td class="${cls}">${value}</td>`;
           })
           .join('') +
@@ -261,6 +296,39 @@ function buildIndexes(t) {
     accountById: new Map(t.accounts.map((a) => [a.id, a])),
     productById: new Map(t.products.map((p) => [p.id, p])),
   };
+}
+
+/**
+ * 取账号所属平台。
+ * @param {object} idx 索引
+ * @param {object|null} account 账号
+ * @returns {object|null} 平台
+ */
+function platformOfAccount(idx, account) {
+  return account ? idx.platformById.get(account.platform_id) || null : null;
+}
+
+/**
+ * 取订单所属平台。
+ * @param {object} idx 索引
+ * @param {object} order 订单
+ * @returns {object|null} 平台
+ */
+function platformOfOrder(idx, order) {
+  return platformOfAccount(idx, idx.accountById.get(order.account_id));
+}
+
+/**
+ * 按关键词过滤列表。
+ * @param {Array} list 数据列表
+ * @param {string} keyword 关键词
+ * @param {Function} fieldsFn 取可搜索文本的函数
+ * @returns {Array} 过滤结果
+ */
+function searchList(list, keyword, fieldsFn) {
+  const q = (keyword || '').trim().toLowerCase();
+  if (!q) return list;
+  return list.filter((item) => fieldsFn(item).join(' ').toLowerCase().includes(q));
 }
 
 /** 渲染数据概要。 */
@@ -320,13 +388,12 @@ function renderKpis(t, orders) {
 function renderBreakdowns(t, orders) {
   const idx = buildIndexes(t);
   const platformOf = (order) => {
-    const account = idx.accountById.get(order.account_id);
-    const platform = account ? idx.platformById.get(account.platform_id) : null;
+    const platform = platformOfOrder(idx, order);
     return platform ? platform.name : '未关联账号';
   };
   const accountOf = (order) => {
     const account = idx.accountById.get(order.account_id);
-    return account ? `${account.alias}（${account.owner || '未填写归属'}）` : '未关联账号';
+    return account ? account.alias : '未关联账号';
   };
 
   const platformRows = [...groupOrders(orders, platformOf).entries()]
@@ -463,7 +530,7 @@ function renderPending(t) {
   }
   const rows = pending.slice(0, 30).map((order) => {
     const account = idx.accountById.get(order.account_id);
-    const platform = account ? idx.platformById.get(account.platform_id) : null;
+    const platform = platformOfAccount(idx, account);
     return [
       order.title || '未命名订单',
       account ? `${platform ? platform.name + ' · ' : ''}${account.alias}` : '未关联账号',
@@ -479,15 +546,14 @@ function renderPending(t) {
   $('pending-orders').innerHTML = table + more;
 }
 
-/** 渲染整个报表。 */
-function renderReport() {
+/** 渲染概览页。 */
+function renderOverview() {
   const t = tables();
   const start = rangeStart(state.range);
   const orders = start == null
     ? t.orders
     : t.orders.filter((o) => (Number(o.ordered_at) || 0) >= start);
 
-  renderMeta(t);
   $('range-hint').textContent = `${RANGE_LABEL[state.range]} · ${orders.length} 笔订单`;
   renderKpis(t, orders);
   renderBreakdowns(t, orders);
@@ -496,15 +562,283 @@ function renderReport() {
   renderPending(t);
 }
 
+/**
+ * 渲染订单页签。
+ * @param {object} t 业务表
+ * @returns {Array} 当前筛选后的订单明细
+ */
+function renderOrdersTab(t) {
+  const idx = buildIndexes(t);
+  const platformId = $('orders-platform').value;
+  const filtered = searchList(t.orders, $('orders-search').value, (order) => {
+    const account = idx.accountById.get(order.account_id);
+    return [
+      order.title,
+      order.tracking_no,
+      order.platform_order_no,
+      order.address_text,
+      account ? account.alias : '',
+    ];
+  }).filter((order) => {
+    if (!platformId) return true;
+    const account = idx.accountById.get(order.account_id);
+    return account ? account.platform_id === platformId : false;
+  });
+
+  filtered.sort((a, b) => (Number(b.ordered_at) || 0) - (Number(a.ordered_at) || 0));
+  const rows = filtered.map((order) => {
+    const account = idx.accountById.get(order.account_id);
+    const platform = platformOfAccount(idx, account);
+    const product = order.product_id ? idx.productById.get(order.product_id) : null;
+    const amount = Number(order.amount) || 0;
+    const cost = Number(order.cost) || 0;
+    const profit = amount - cost;
+    return [
+      fmtDate(order.ordered_at),
+      order.title || '—',
+      platform ? platform.name : '—',
+      account ? account.alias : '—',
+      { html: `<span class="money">${money(amount)}</span>`, text: amount.toFixed(2) },
+      { html: money(cost), text: cost.toFixed(2) },
+      {
+        html: `<span style="color:${profit >= 0 ? '#02743b' : '#dc2626'};font-weight:600">${money(profit)}</span>`,
+        text: profit.toFixed(2),
+      },
+      ORDER_ROUTE[order.route] || order.route || '—',
+      order.tracking_no || '待补',
+      order.platform_order_no || '—',
+      product ? product.name : '—',
+      order.address_text || '—',
+    ];
+  });
+
+  $('orders-count').textContent = `共 ${rows.length} 笔`;
+  $('orders-table').innerHTML = rows.length
+    ? tableHtml(
+        ['下单时间', '商品标题', '平台', '账号', '金额', '成本', '利润', '履约', '物流单号', '平台单号', '关联商品', '收件地址'],
+        rows,
+        [4, 5, 6],
+      )
+    : '<div class="empty-inline">没有匹配的订单</div>';
+  return rows;
+}
+
+/**
+ * 渲染包裹页签。
+ * @param {object} t 业务表
+ * @returns {Array} 当前筛选后的包裹明细
+ */
+function renderParcelsTab(t) {
+  const idx = buildIndexes(t);
+  const status = $('parcels-status').value;
+  const orderById = new Map(t.orders.map((o) => [o.id, o]));
+  const filtered = searchList(t.parcels, $('parcels-search').value, (parcel) => {
+    const account = parcel.account_id ? idx.accountById.get(parcel.account_id) : null;
+    return [parcel.tracking_no, parcel.carrier, parcel.note, parcel.address_text, account ? account.alias : ''];
+  })
+    .filter((parcel) => (status ? (parcel.status || 'pending') === status : true))
+    .sort((a, b) => (Number(b.scanned_at) || 0) - (Number(a.scanned_at) || 0));
+
+  const rows = filtered.map((parcel) => {
+    const account = parcel.account_id ? idx.accountById.get(parcel.account_id) : null;
+    const platform = platformOfAccount(idx, account);
+    const order = parcel.order_id ? orderById.get(parcel.order_id) : null;
+    return [
+      parcel.tracking_no,
+      parcel.carrier || '未知快递',
+      PARCEL_STATUS[parcel.status] || parcel.status || '—',
+      PARCEL_SOURCE[parcel.source] || parcel.source || '—',
+      fmtDate(parcel.scanned_at),
+      platform ? platform.name : '—',
+      account ? account.alias : '—',
+      order ? order.title || order.platform_order_no || '已关联' : '—',
+      parcel.note || '—',
+    ];
+  });
+
+  $('parcels-count').textContent = `共 ${rows.length} 件`;
+  $('parcels-table').innerHTML = rows.length
+    ? tableHtml(['运单号', '快递公司', '状态', '来源', '入库时间', '平台', '账号', '关联订单', '备注'], rows)
+    : '<div class="empty-inline">没有匹配的包裹</div>';
+  return rows;
+}
+
+/**
+ * 渲染账号页签。
+ * @param {object} t 业务表
+ * @returns {Array} 当前筛选后的账号明细
+ */
+function renderAccountsTab(t) {
+  const idx = buildIndexes(t);
+  const platformId = $('accounts-platform').value;
+  const filtered = searchList(t.accounts, $('accounts-search').value, (account) => [
+    account.alias,
+    account.note,
+  ]).filter((account) => (platformId ? account.platform_id === platformId : true));
+
+  const rows = filtered.map((account) => {
+    const platform = platformOfAccount(idx, account);
+    return [
+      platform ? platform.name : '—',
+      account.alias,
+      account.status === 'disabled' ? '停用' : '正常',
+      account.note || '—',
+      fmtDate(account.created_at),
+    ];
+  });
+
+  $('accounts-count').textContent = `共 ${rows.length} 个`;
+  $('accounts-table').innerHTML = rows.length
+    ? tableHtml(['平台', '账号别名', '状态', '备注', '创建时间'], rows)
+    : '<div class="empty-inline">没有匹配的账号</div>';
+  return rows;
+}
+
+/**
+ * 渲染平台页签。
+ * @param {object} t 业务表
+ * @returns {Array} 当前筛选后的平台明细
+ */
+function renderPlatformsTab(t) {
+  const rows = searchList(t.platforms, $('platforms-search').value, (platform) => [platform.name]).map(
+    (platform) => {
+      const accounts = t.accounts.filter((a) => a.platform_id === platform.id);
+      const accountIds = new Set(accounts.map((a) => a.id));
+      const orderCount = t.orders.filter((o) => accountIds.has(o.account_id)).length;
+      return [
+        platform.name,
+        count(accounts.length),
+        count(orderCount),
+        count(platform.sort),
+        fmtDate(platform.created_at),
+      ];
+    },
+  );
+
+  $('platforms-count').textContent = `共 ${rows.length} 个`;
+  $('platforms-table').innerHTML = rows.length
+    ? tableHtml(['平台', '账号数', '订单数', '排序', '创建时间'], rows, [1, 2, 3])
+    : '<div class="empty-inline">没有匹配的平台</div>';
+  return rows;
+}
+
+/**
+ * 渲染商品页签。
+ * @param {object} t 业务表
+ * @returns {Array} 当前筛选后的商品明细
+ */
+function renderProductsTab(t) {
+  const rows = searchList(t.products, $('products-search').value, (product) => [
+    product.name,
+    product.spec,
+    product.note,
+  ]).map((product) => {
+    const cost = Number(product.cost) || 0;
+    const price = Number(product.price) || 0;
+    return [
+      product.name,
+      product.spec || '—',
+      { html: product.cost == null ? '—' : money(cost), text: product.cost == null ? '' : cost.toFixed(2) },
+      { html: product.price == null ? '—' : money(price), text: product.price == null ? '' : price.toFixed(2) },
+      {
+        html: `<span style="color:${price - cost >= 0 ? '#02743b' : '#dc2626'};font-weight:600">${money(price - cost)}</span>`,
+        text: (price - cost).toFixed(2),
+      },
+      product.note || '—',
+      fmtDate(product.created_at),
+    ];
+  });
+
+  $('products-count').textContent = `共 ${rows.length} 个`;
+  $('products-table').innerHTML = rows.length
+    ? tableHtml(['商品名称', '规格', '成本', '售价', '单件利润', '备注', '创建时间'], rows, [2, 3, 4])
+    : '<div class="empty-inline">没有匹配的商品</div>';
+  return rows;
+}
+
+/**
+ * 渲染审计页签。
+ * @param {object} t 业务表
+ * @returns {Array} 当前筛选后的审计明细
+ */
+function renderAuditTab(t) {
+  const rows = searchList(t.audit_logs, $('audit-search').value, (log) => [
+    AUDIT_ACTION[log.action] || log.action,
+    log.target_type,
+    log.target_id,
+    log.detail,
+  ])
+    .slice()
+    .sort((a, b) => (Number(b.ts) || 0) - (Number(a.ts) || 0))
+    .map((log) => [
+      fmtDate(log.ts),
+      AUDIT_ACTION[log.action] || log.action,
+      log.target_type || '—',
+      log.target_id || '—',
+      log.detail || '—',
+    ]);
+
+  $('audit-count').textContent = `共 ${rows.length} 条`;
+  $('audit-table').innerHTML = rows.length
+    ? tableHtml(['时间', '动作', '对象类型', '对象 ID', '详情'], rows)
+    : '<div class="empty-inline">暂无审计记录</div>';
+  return rows;
+}
+
+/**
+ * 平台下拉框选项（含“全部平台”）。
+ * @param {string} selectId 下拉框 id
+ * @param {Array} platforms 平台列表
+ */
+function fillPlatformSelect(selectId, platforms) {
+  const select = $(selectId);
+  const current = select.value;
+  select.innerHTML =
+    '<option value="">全部平台</option>' +
+    platforms
+      .map((p) => `<option value="${esc(p.id)}">${esc(p.name)}</option>`)
+      .join('');
+  select.value = platforms.some((p) => p.id === current) ? current : '';
+}
+
+/** 切换页签并渲染。 */
+function renderTab() {
+  for (const tab of TABS) {
+    $(`panel-${tab}`).hidden = tab !== state.tab;
+  }
+  for (const node of $('tabs').querySelectorAll('button')) {
+    node.classList.toggle('active', node.dataset.tab === state.tab);
+  }
+  if (!state.dataset) return;
+  if (state.tab === 'overview') {
+    renderOverview();
+    return;
+  }
+  const t = tables();
+  const renderers = {
+    orders: renderOrdersTab,
+    parcels: renderParcelsTab,
+    accounts: renderAccountsTab,
+    platforms: renderPlatformsTab,
+    products: renderProductsTab,
+    audit: renderAuditTab,
+  };
+  lastRows[state.tab] = renderers[state.tab](t);
+}
+
 /** 根据是否有数据切换空态与报表。 */
 function renderAll() {
   const has = Boolean(state.dataset);
   $('empty').hidden = has;
   $('report').hidden = !has;
-  for (const id of ['btn-export-orders', 'btn-export-parcels', 'btn-export-summary', 'btn-clear']) {
-    $(id).disabled = !has;
-  }
-  if (has) renderReport();
+  $('btn-clear').disabled = !has;
+  $('btn-export-summary').disabled = !has;
+  if (!has) return;
+  const t = tables();
+  renderMeta(t);
+  fillPlatformSelect('orders-platform', t.platforms);
+  fillPlatformSelect('accounts-platform', t.platforms);
+  renderTab();
 }
 
 /**
@@ -555,7 +889,8 @@ async function handleFiles(files) {
  * @returns {string} CSV 安全文本
  */
 function csvCell(value) {
-  const text = value == null ? '' : String(value);
+  const raw = value && typeof value === 'object' ? value.text : value;
+  const text = raw == null ? '' : String(raw);
   return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
@@ -586,70 +921,49 @@ function download(fileName, content) {
   setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
 
-/** 导出订单明细 CSV（全部订单，按时间倒序）。 */
-function exportOrders() {
-  const t = tables();
-  if (!state.dataset) return;
-  const idx = buildIndexes(t);
-  const rows = [...t.orders]
-    .sort((a, b) => (Number(b.ordered_at) || 0) - (Number(a.ordered_at) || 0))
-    .map((order) => {
-      const account = idx.accountById.get(order.account_id);
-      const platform = account ? idx.platformById.get(account.platform_id) : null;
-      const product = order.product_id ? idx.productById.get(order.product_id) : null;
-      const amount = Number(order.amount) || 0;
-      const cost = Number(order.cost) || 0;
-      return [
-        order.id,
-        platform ? platform.name : '',
-        account ? account.alias : '',
-        order.title || '',
-        product ? product.name : '',
-        amount,
-        cost,
-        amount - cost,
-        ORDER_ROUTE[order.route] || order.route || '',
-        order.tracking_no || '',
-        ORDER_STATUS[order.status] || order.status || '',
-        fmtDate(order.ordered_at),
-        order.platform_order_no || '',
-        order.address_text || '',
-      ];
-    });
-  const headers = [
-    '订单ID', '平台', '账号', '商品标题', '关联商品', '金额', '成本', '利润',
-    '履约路径', '物流单号', '状态', '下单时间', '平台单号', '收件地址',
-  ];
-  download(`订单明细-${stamp()}.csv`, toCsv(headers, rows));
-  toast(`已导出 ${rows.length} 笔订单`);
-}
+/** 各页签导出配置：表头与文件名。 */
+const EXPORT_CONFIG = {
+  orders: {
+    name: '订单明细',
+    headers: ['下单时间', '商品标题', '平台', '账号', '金额', '成本', '利润', '履约', '物流单号', '平台单号', '关联商品', '收件地址'],
+  },
+  parcels: {
+    name: '包裹明细',
+    headers: ['运单号', '快递公司', '状态', '来源', '入库时间', '平台', '账号', '关联订单', '备注'],
+  },
+  accounts: {
+    name: '账号台账',
+    headers: ['平台', '账号别名', '状态', '备注', '创建时间'],
+  },
+  platforms: {
+    name: '平台列表',
+    headers: ['平台', '账号数', '订单数', '排序', '创建时间'],
+  },
+  products: {
+    name: '商品列表',
+    headers: ['商品名称', '规格', '成本', '售价', '单件利润', '备注', '创建时间'],
+  },
+  audit: {
+    name: '审计日志',
+    headers: ['时间', '动作', '对象类型', '对象 ID', '详情'],
+  },
+};
 
-/** 导出包裹明细 CSV（按入库时间倒序）。 */
-function exportParcels() {
-  const t = tables();
+/**
+ * 导出当前页签的筛选结果。
+ * @param {string} tab 页签 id
+ */
+function exportTab(tab) {
   if (!state.dataset) return;
-  const idx = buildIndexes(t);
-  const orderById = new Map(t.orders.map((o) => [o.id, o]));
-  const rows = [...t.parcels]
-    .sort((a, b) => (Number(b.scanned_at) || 0) - (Number(a.scanned_at) || 0))
-    .map((parcel) => {
-      const account = parcel.account_id ? idx.accountById.get(parcel.account_id) : null;
-      const platform = account ? idx.platformById.get(account.platform_id) : null;
-      const order = parcel.order_id ? orderById.get(parcel.order_id) : null;
-      return [
-        parcel.tracking_no,
-        parcel.carrier || '',
-        PARCEL_STATUS[parcel.status] || parcel.status || '',
-        PARCEL_SOURCE[parcel.source] || parcel.source || '',
-        fmtDate(parcel.scanned_at),
-        account ? `${platform ? platform.name + ' · ' : ''}${account.alias}` : '',
-        order ? order.title || '' : '',
-        parcel.note || '',
-      ];
-    });
-  const headers = ['运单号', '快递公司', '状态', '来源', '入库时间', '归属账号', '关联订单', '备注'];
-  download(`包裹明细-${stamp()}.csv`, toCsv(headers, rows));
-  toast(`已导出 ${rows.length} 个包裹`);
+  const config = EXPORT_CONFIG[tab];
+  if (!config) return;
+  const rows = lastRows[tab] || [];
+  if (rows.length === 0) {
+    toast('当前筛选结果为空，没有可导出的数据');
+    return;
+  }
+  download(`${config.name}-${stamp()}.csv`, toCsv(config.headers, rows));
+  toast(`已导出 ${rows.length} 条${config.name}`);
 }
 
 /** 导出平台/账号汇总 CSV（全部数据 + 合计）。 */
@@ -658,13 +972,12 @@ function exportSummary() {
   if (!state.dataset) return;
   const idx = buildIndexes(t);
   const platformOf = (order) => {
-    const account = idx.accountById.get(order.account_id);
-    const platform = account ? idx.platformById.get(account.platform_id) : null;
+    const platform = platformOfOrder(idx, order);
     return platform ? platform.name : '未关联账号';
   };
   const accountOf = (order) => {
     const account = idx.accountById.get(order.account_id);
-    return account ? `${account.alias}（${account.owner || '未填写归属'}）` : '未关联账号';
+    return account ? account.alias : '未关联账号';
   };
 
   const rows = [];
@@ -684,11 +997,27 @@ function exportSummary() {
   toast('已导出经营汇总');
 }
 
-/** 生成文件名用的时间戳。 */
-function stamp() {
-  const d = new Date();
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
+/** 绑定搜索与筛选变化，实时重绘当前页签。 */
+function bindFilters() {
+  const map = {
+    orders: ['orders-search', 'orders-platform'],
+    parcels: ['parcels-search', 'parcels-status'],
+    accounts: ['accounts-search', 'accounts-platform'],
+    platforms: ['platforms-search'],
+    products: ['products-search'],
+    audit: ['audit-search'],
+  };
+  for (const [tab, ids] of Object.entries(map)) {
+    for (const id of ids) {
+      const node = $(id);
+      node.addEventListener('input', () => {
+        if (state.tab === tab) renderTab();
+      });
+      node.addEventListener('change', () => {
+        if (state.tab === tab) renderTab();
+      });
+    }
+  }
 }
 
 /** 绑定页面交互。 */
@@ -724,6 +1053,13 @@ function bindEvents() {
     handleFiles(event.dataTransfer.files);
   });
 
+  $('tabs').addEventListener('click', (event) => {
+    const button = event.target.closest('button[data-tab]');
+    if (!button || button.dataset.tab === state.tab) return;
+    state.tab = button.dataset.tab;
+    renderTab();
+  });
+
   $('range-group').addEventListener('click', (event) => {
     const button = event.target.closest('button[data-range]');
     if (!button) return;
@@ -733,12 +1069,14 @@ function bindEvents() {
     for (const node of $('range-group').querySelectorAll('button')) {
       node.classList.toggle('active', node === button);
     }
-    renderReport();
+    renderOverview();
   });
 
-  $('btn-export-orders').addEventListener('click', exportOrders);
-  $('btn-export-parcels').addEventListener('click', exportParcels);
   $('btn-export-summary').addEventListener('click', exportSummary);
+  for (const tab of Object.keys(EXPORT_CONFIG)) {
+    $(`${tab}-export`).addEventListener('click', () => exportTab(tab));
+  }
+  bindFilters();
 
   $('btn-clear').addEventListener('click', async () => {
     if (!state.dataset) return;

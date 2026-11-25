@@ -342,12 +342,44 @@ class ShipmentModel {
   }
 }
 
-/// 转寄批次列表项：批次信息 + 包裹数量。
+/// 转寄批次列表项：批次信息 + 包裹数量 + 关联订单数。
 class ShipmentView {
-  const ShipmentView({required this.shipment, required this.parcelCount});
+  const ShipmentView({
+    required this.shipment,
+    required this.parcelCount,
+    this.orderCount = 0,
+  });
 
   final ShipmentModel shipment;
   final int parcelCount;
+
+  /// 批次内已关联代下单订单的数量。
+  final int orderCount;
+}
+
+/// 批次内单个包裹 + 关联订单信息，供批次详情展示。
+class ShipmentParcelView {
+  const ShipmentParcelView({
+    required this.parcel,
+    required this.orderTitle,
+    required this.platformName,
+    required this.accountAlias,
+    required this.amount,
+  });
+
+  final ParcelModel parcel;
+  final String orderTitle;
+  final String platformName;
+  final String accountAlias;
+  final double? amount;
+
+  /// 订单展示文案：平台 · 账号。
+  String get accountTitle {
+    if (platformName.isEmpty && accountAlias.isEmpty) return '未关联订单';
+    return [platformName, accountAlias]
+        .where((e) => e.isNotEmpty)
+        .join(' · ');
+  }
 }
 
 /// 首页统计快照。

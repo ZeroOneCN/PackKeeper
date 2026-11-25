@@ -547,7 +547,10 @@ class AppDatabase {
     final rows = await db.rawQuery(
       '''
       SELECT s.*,
-             (SELECT COUNT(*) FROM parcels p WHERE p.shipment_id = s.id) AS parcel_count
+             (SELECT COUNT(*) FROM parcels p WHERE p.shipment_id = s.id) AS parcel_count,
+             (SELECT COUNT(*) FROM parcels p
+                JOIN orders o ON o.id = p.order_id
+               WHERE p.shipment_id = s.id) AS order_count
       FROM shipments s
       ${where.isEmpty ? '' : 'WHERE ${where.join(' AND ')}'}
       ORDER BY s.shipped_at DESC, s.created_at DESC
@@ -559,6 +562,7 @@ class AppDatabase {
           (row) => ShipmentView(
             shipment: ShipmentModel.fromMap(row),
             parcelCount: (row['parcel_count'] as int?) ?? 0,
+            orderCount: (row['order_count'] as int?) ?? 0,
           ),
         )
         .toList();
@@ -576,6 +580,113 @@ class AppDatabase {
       whereArgs: [shipmentId],
     );
     return rows.map((row) => row['id'] as String).toSet();
+  }
+
+  /// 查询批次内已关联的包裹。
+  ///
+  /// 参数：[shipmentId] 批次主键。
+  Future<List<ParcelModel>> shipmentParcels(String shipmentId) async {
+    final db = await database;
+    final rows = await db.query(
+      'parcels',
+      where: 'shipment_id = ?',
+      whereArgs: [shipmentId],
+      orderBy: 'scanned_at DESC',
+    );
+    return rows.map(ParcelModel.fromMap).toList();
+  }
+
+  /// 查询批次内包裹及其关联订单，供批次详情展示。
+  ///
+  /// 参数：[shipmentId] 批次主键。
+  Future<List<ShipmentParcelView>> shipmentParcelViews(String shipmentId) async {
+    final db = await database;
+    final rows = await db.rawQuery(
+      '''
+      SELECT p.*,
+             o.title AS order_title,
+             o.amount AS order_amount,
+             a.alias AS account_alias,
+             pl.name AS platform_name
+      FROM parcels p
+      LEFT JOIN orders o ON o.id = p.order_id
+      LEFT JOIN accounts a ON a.id = p.account_id
+      LEFT JOIN platforms pl ON pl.id = a.platform_id
+      WHERE p.shipment_id = ?
+      ORDER BY p.scanned_at DESC
+      ''',
+      [shipmentId],
+    );
+    return rows
+        .map(
+          (row) => ShipmentParcelView(
+            parcel: ParcelModel.fromMap(row),
+            orderTitle: (row['order_title'] as String?) ?? '',
+            platformName: (row['platform_name'] as String?) ?? '',
+            accountAlias: (row['account_alias'] as String?) ?? '',
+            amount: (row['order_amount'] as num?)?.toDouble(),
+          ),
+        )
+        .toList();
+  }
+
+  /// 调整批次内包裹：移除已选包裹并加入新包裹。
+  ///
+  /// 参数：[shipmentId] 批次主键；[addIds] 新增包裹；[removeIds] 移出包裹。
+  /// 移出的包裹恢复为已入库，新增的包裹置为已出库。
+  Future<void> setShipmentParcels({
+    required String shipmentId,
+    List<String> addIds = const [],
+    List<String> removeIds = const [],
+  }) async {
+    if (addIds.isEmpty && removeIds.isEmpty) return;
+    final db = await database;
+    await db.transaction((txn) async {
+      if (removeIds.isNotEmpty) {
+        final placeholders = List.filled(removeIds.length, '?').join(', ');
+        await txn.rawUpdate(
+          'UPDATE parcels SET shipment_id = NULL, status = ? '
+          'WHERE shipment_id = ? AND id IN ($placeholders)',
+          [ParcelStatus.inbound.name, shipmentId, ...removeIds],
+        );
+      }
+      if (addIds.isNotEmpty) {
+        final placeholders = List.filled(addIds.length, '?').join(', ');
+        await txn.rawUpdate(
+          'UPDATE parcels SET shipment_id = ?, status = ? WHERE id IN ($placeholders)',
+          [shipmentId, ParcelStatus.outbound.name, ...addIds],
+        );
+      }
+      await _audit(
+        txn,
+        'shipment.parcels',
+        'shipment',
+        shipmentId,
+        '新增 ${addIds.length} 件，移出 ${removeIds.length} 件',
+      );
+    });
+  }
+
+  /// 查询可绑定订单的包裹：尚未关联订单且不是异常件。
+  ///
+  /// 参数：[keyword] 可选运单号/快递公司模糊搜索。
+  Future<List<ParcelModel>> unboundParcels({String keyword = ''}) async {
+    final db = await database;
+    final where = <String>['order_id IS NULL', 'status <> ?'];
+    final args = <Object?>[ParcelStatus.exception.name];
+    final trimmed = keyword.trim();
+    if (trimmed.isNotEmpty) {
+      where.add('(tracking_no LIKE ? OR carrier LIKE ?)');
+      args.addAll(['%$trimmed%', '%$trimmed%']);
+    }
+    final rows = await db.query(
+      'parcels',
+      where: where.join(' AND '),
+      whereArgs: args,
+      orderBy: 'scanned_at DESC',
+      limit: 300,
+    );
+    return rows.map(ParcelModel.fromMap).toList();
   }
 
   /// 新建转寄批次：写入批次并把所选包裹置为已出库。

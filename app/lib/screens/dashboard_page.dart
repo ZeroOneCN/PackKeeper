@@ -6,6 +6,7 @@ import '../core/db.dart';
 import '../core/models.dart';
 import '../core/theme.dart';
 import '../widgets/common.dart';
+import '../widgets/parcel_picker.dart';
 import 'order_form_page.dart';
 import 'products_page.dart';
 import 'backup_sheet.dart';
@@ -142,6 +143,15 @@ class _DashboardPageState extends State<DashboardPage> {
           decoration: appInput(hint: '粘贴或扫码填入物流单号'),
         ),
         actions: [
+          TextButton.icon(
+            onPressed: () async {
+              final picked = await showParcelPicker(ctx);
+              if (picked == null) return;
+              _trackingCtrl.text = picked.trackingNo;
+            },
+            icon: const Icon(Icons.inbox_outlined, size: 16),
+            label: const Text('从池子选择'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: const Text('取消'),

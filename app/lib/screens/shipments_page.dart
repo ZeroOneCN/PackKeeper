@@ -9,6 +9,7 @@ import '../core/db.dart';
 import '../core/models.dart';
 import '../core/theme.dart';
 import '../widgets/common.dart';
+import 'shipment_detail_page.dart';
 import 'shipment_form_page.dart';
 
 /// 转寄批次：把一个快递单寄出的多个包裹记成一批，并统计快递费。
@@ -112,7 +113,15 @@ class _ShipmentsPageState extends State<ShipmentsPage> {
     return '${d.year}-${two(d.month)}-${two(d.day)}';
   }
 
-  /// 批次卡片：左滑编辑/删除，点击卡片不进入编辑。
+  /// 打开批次详情。
+  Future<void> _openDetail(ShipmentView view) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(builder: (_) => ShipmentDetailPage(view: view)),
+    );
+    if (mounted) _load();
+  }
+
+  /// 批次卡片：点击查看详情，左滑编辑/删除。
   Widget _buildCard(ShipmentView view) {
     final shipment = view.shipment;
     return SlideActionCard(
@@ -164,6 +173,7 @@ class _ShipmentsPageState extends State<ShipmentsPage> {
                 Text(
                   [
                     '${view.parcelCount} 件包裹',
+                    if (view.orderCount > 0) '${view.orderCount} 个订单',
                     _date(shipment.shippedAt),
                     if (shipment.note.isNotEmpty) shipment.note,
                   ].join(' · '),
@@ -187,7 +197,7 @@ class _ShipmentsPageState extends State<ShipmentsPage> {
             ).padding(left: 10),
           ],
         ),
-      ),
+      ).gestures(onTap: () => _openDetail(view)),
     );
   }
 

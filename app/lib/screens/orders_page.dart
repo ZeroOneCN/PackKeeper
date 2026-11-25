@@ -9,6 +9,7 @@ import '../core/db.dart';
 import '../core/models.dart';
 import '../core/theme.dart';
 import '../widgets/common.dart';
+import '../widgets/parcel_picker.dart';
 import 'order_form_page.dart';
 
 /// 订单列表：检索、平台筛选与补录物流单号。
@@ -194,6 +195,18 @@ class _OrdersPageState extends State<OrdersPage> {
             decoration: appInput(hint: '粘贴或输入物流单号'),
           ),
           actions: [
+            TextButton.icon(
+              onPressed: saving
+                  ? null
+                  : () async {
+                      final picked = await showParcelPicker(ctx);
+                      if (picked == null) return;
+                      _trackingCtrl.text = picked.trackingNo;
+                      setDialogState(() {});
+                    },
+              icon: const Icon(Icons.inbox_outlined, size: 16),
+              label: const Text('从池子选择'),
+            ),
             TextButton(
               onPressed: saving ? null : () => Navigator.pop(ctx, false),
               child: const Text('取消'),

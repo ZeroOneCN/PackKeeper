@@ -28,6 +28,9 @@ class _ShipmentFormPageState extends State<ShipmentFormPage> {
   late DateTime _shippedAt;
   List<ParcelModel> _candidates = const [];
   final Set<String> _selected = {};
+
+  /// 编辑模式下批次原有的包裹，用于计算追加/移出。
+  Set<String> _initialSelected = {};
   bool _loading = true;
   bool _saving = false;
 
@@ -56,17 +59,20 @@ class _ShipmentFormPageState extends State<ShipmentFormPage> {
     super.dispose();
   }
 
-  /// 新建时加载可选包裹；编辑时加载已关联包裹数量。
+  /// 加载候选包裹：编辑模式包含批次原有包裹，其余为可加入包裹。
   Future<void> _load() async {
     if (_isEdit) {
-      final ids = await AppDatabase.instance.shipmentParcelIds(
+      final current = await AppDatabase.instance.shipmentParcels(
         widget.editing!.shipment.id,
       );
+      final others = await AppDatabase.instance.shipableParcels();
       if (!mounted) return;
       setState(() {
+        _candidates = [...current, ...others];
         _selected
           ..clear()
-          ..addAll(ids);
+          ..addAll(current.map((p) => p.id));
+        _initialSelected = current.map((p) => p.id).toSet();
         _loading = false;
       });
       return;
@@ -108,20 +114,26 @@ class _ShipmentFormPageState extends State<ShipmentFormPage> {
       showToast(context, '请填写正确的快递费');
       return;
     }
-    if (!_isEdit && _selected.isEmpty) {
+    if (_selected.isEmpty) {
       showToast(context, '请至少选择一个包裹');
       return;
     }
     setState(() => _saving = true);
     try {
       if (_isEdit) {
+        final id = widget.editing!.shipment.id;
         await AppDatabase.instance.updateShipment(
-          id: widget.editing!.shipment.id,
+          id: id,
           carrier: _carrierCtrl.text,
           trackingNo: _trackingCtrl.text,
           fee: fee,
           shippedAt: _shippedAt.millisecondsSinceEpoch,
           note: _noteCtrl.text,
+        );
+        await AppDatabase.instance.setShipmentParcels(
+          shipmentId: id,
+          addIds: _selected.difference(_initialSelected).toList(),
+          removeIds: _initialSelected.difference(_selected).toList(),
         );
       } else {
         await AppDatabase.instance.addShipment(
@@ -198,7 +210,7 @@ class _ShipmentFormPageState extends State<ShipmentFormPage> {
     );
   }
 
-  /// 包裹勾选列表（仅新建模式）。
+  /// 包裹勾选列表：新建时选包裹，编辑时可追加或移出。
   Widget _buildParcelPicker() {
     if (_loading) {
       return const Center(child: CircularProgressIndicator()).padding(
@@ -258,6 +270,7 @@ class _ShipmentFormPageState extends State<ShipmentFormPage> {
                 [
                   parcel.carrier.isEmpty ? '未知快递' : parcel.carrier,
                   parcel.status.label,
+                  if (_initialSelected.contains(parcel.id)) '已在本批次',
                 ].join(' · '),
               ).fontSize(11).textColor(AppColors.ink3),
             ),
@@ -276,16 +289,7 @@ class _ShipmentFormPageState extends State<ShipmentFormPage> {
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
               children: [
                 _buildFields(),
-                if (_isEdit)
-                  AppCard(
-                    padding: const EdgeInsets.all(12),
-                    child: Text(
-                      '本批次已关联 ${widget.editing!.parcelCount} 件包裹，'
-                      '如需调整包裹请删除批次后重新创建。',
-                    ).fontSize(12).textColor(AppColors.ink3),
-                  ).padding(top: 14)
-                else
-                  _buildParcelPicker(),
+                _buildParcelPicker(),
                 const SizedBox(height: 20),
                 FilledButton(
                   onPressed: _saving ? null : _save,

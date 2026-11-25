@@ -10,7 +10,7 @@ import 'inbox_page.dart';
 import 'orders_page.dart';
 import 'shipments_page.dart';
 
-/// 应用主壳：底部五个主 Tab（工作概览 / 待认领池 / 订单列表 / 转寄批次 / 账号台账）。
+/// 应用主壳：底部五个主 Tab（概览 / 认领 / 订单 / 转寄 / 台账）。
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
 
@@ -67,17 +67,17 @@ class _HomeShellState extends State<HomeShell> {
                 NavigationDestination(
                   icon: Icon(Icons.grid_view_outlined),
                   selectedIcon: Icon(Icons.grid_view_rounded),
-                  label: '工作概览',
+                  label: '概览',
                 ),
                 NavigationDestination(
                   icon: Icon(Icons.inbox_outlined),
                   selectedIcon: Icon(Icons.inbox),
-                  label: '待认领池',
+                  label: '认领',
                 ),
                 NavigationDestination(
                   icon: Icon(Icons.receipt_long_outlined),
                   selectedIcon: Icon(Icons.receipt_long),
-                  label: '订单列表',
+                  label: '订单',
                 ),
                 NavigationDestination(
                   icon: Icon(Icons.local_shipping_outlined),
@@ -87,7 +87,7 @@ class _HomeShellState extends State<HomeShell> {
                 NavigationDestination(
                   icon: Icon(Icons.badge_outlined),
                   selectedIcon: Icon(Icons.badge),
-                  label: '账号台账',
+                  label: '台账',
                 ),
               ],
             ).decorated(

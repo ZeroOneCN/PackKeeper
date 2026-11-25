@@ -421,6 +421,10 @@ main {
   color: var(--warn);
 }
 
+.kpi .value.red {
+  color: var(--danger);
+}
+
 .kpi .sub {
   margin-top: 2px;
   color: var(--ink3);

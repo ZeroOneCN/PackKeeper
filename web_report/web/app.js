@@ -8,7 +8,14 @@ const STORE_NAME = 'datasets';
 const DATASET_KEY = 'latest';
 
 /** 包裹状态中文名。 */
-const PARCEL_STATUS = { pending: '待认领', assigned: '已分配', exception: '异常件' };
+const PARCEL_STATUS = {
+  pending: '待认领',
+  assigned: '已分配',
+  inbound: '已入库',
+  outbound: '已转寄',
+  done: '已完成',
+  exception: '异常件',
+};
 /** 包裹来源中文名。 */
 const PARCEL_SOURCE = { scan: '扫码', ocr: '面单', manual: '手动' };
 /** 订单状态中文名。 */
@@ -31,10 +38,22 @@ const AUDIT_ACTION = {
   'product.create': '新增商品',
   'product.update': '修改商品',
   'product.delete': '删除商品',
+  'shipment.create': '新建转寄批次',
+  'shipment.update': '修改转寄批次',
+  'shipment.delete': '删除转寄批次',
 };
 
 /** 管理后台页签。 */
-const TABS = ['overview', 'orders', 'parcels', 'accounts', 'platforms', 'products', 'audit'];
+const TABS = [
+  'overview',
+  'orders',
+  'parcels',
+  'shipments',
+  'accounts',
+  'platforms',
+  'products',
+  'audit',
+];
 
 /** 页面状态。 */
 const state = { dataset: null, range: 'all', tab: 'overview' };
@@ -183,7 +202,7 @@ async function clearDataset() {
 /**
  * 读取备份 JSON 中的业务表，缺失字段按空数组处理。
  * @returns {{platforms:Array,accounts:Array,products:Array,parcels:Array,orders:Array,
- *   scan_events:Array,audit_logs:Array}} 业务表集合
+ *   shipments:Array,scan_events:Array,audit_logs:Array}} 业务表集合
  */
 function tables() {
   const data = state.dataset && state.dataset.payload && state.dataset.payload.data
@@ -196,6 +215,7 @@ function tables() {
     products: pick('products'),
     parcels: pick('parcels'),
     orders: pick('orders'),
+    shipments: pick('shipments'),
     scan_events: pick('scan_events'),
     audit_logs: pick('audit_logs'),
   };
@@ -230,6 +250,33 @@ function sumOrders(orders) {
     cost += Number(order.cost) || 0;
   }
   return { orderCount: orders.length, sales, cost, profit: sales - cost };
+}
+
+/**
+ * 汇总转寄批次的快递费。
+ * @param {Array} shipments 转寄批次表
+ * @returns {{shipmentCount:number,fee:number}} 批次数量与快递费合计
+ */
+function sumShipments(shipments) {
+  let fee = 0;
+  for (const shipment of shipments) {
+    fee += Number(shipment.fee) || 0;
+  }
+  return { shipmentCount: shipments.length, fee };
+}
+
+/**
+ * 统计每个转寄批次关联的包裹数量。
+ * @param {Array} parcels 包裹表
+ * @returns {Map<string,number>} 批次 id → 包裹数
+ */
+function parcelCountByShipment(parcels) {
+  const map = new Map();
+  for (const parcel of parcels) {
+    if (!parcel.shipment_id) continue;
+    map.set(parcel.shipment_id, (map.get(parcel.shipment_id) || 0) + 1);
+  }
+  return map;
 }
 
 /**
@@ -338,28 +385,41 @@ function renderMeta(t) {
     `<span>数据文件：<strong>${esc(state.dataset.fileName)}</strong></span>`,
     `<span>导入时间：<strong>${esc(fmtDate(state.dataset.importedAt))}</strong></span>`,
     `<span>备份时间：<strong>${esc(fmtDate(payload.exported_at))}</strong></span>`,
-    `<span>平台 ${t.platforms.length} · 账号 ${t.accounts.length} · 商品 ${t.products.length} · 订单 ${t.orders.length} · 包裹 ${t.parcels.length}</span>`,
+    `<span>平台 ${t.platforms.length} · 账号 ${t.accounts.length} · 商品 ${t.products.length} · 订单 ${t.orders.length} · 包裹 ${t.parcels.length} · 转寄 ${t.shipments.length}</span>`,
   ];
   $('meta').innerHTML = parts.join('');
 }
 
-/** 渲染 KPI 指标卡。 */
-function renderKpis(t, orders) {
+/**
+ * 渲染 KPI 指标卡。
+ * @param {object} t 业务表
+ * @param {Array} orders 区间内订单
+ * @param {Array} shipments 区间内转寄批次
+ */
+function renderKpis(t, orders, shipments) {
   const sum = sumOrders(orders);
+  const ship = sumShipments(shipments);
   const pendingParcels = t.parcels.filter((p) => p.status === 'pending').length;
   const pendingOrders = t.orders.filter((o) => !o.tracking_no).length;
   const avg = sum.orderCount > 0 ? sum.sales / sum.orderCount : 0;
-  const margin = sum.sales > 0 ? (sum.profit / sum.sales) * 100 : 0;
+  const netProfit = sum.sales - sum.cost - ship.fee;
+  const margin = sum.sales > 0 ? (netProfit / sum.sales) * 100 : 0;
 
   const cards = [
     { label: '订单数', value: count(sum.orderCount), sub: '笔' },
     { label: '销售额', value: money(sum.sales), sub: RANGE_LABEL[state.range] },
     { label: '成本', value: money(sum.cost), sub: '已录成本的订单' },
     {
-      label: '利润',
-      value: money(sum.profit),
-      sub: sum.sales > 0 ? `利润率 ${margin.toFixed(1)}%` : '暂无销售额',
-      tone: 'green',
+      label: '快递费',
+      value: money(ship.fee),
+      sub: `${ship.shipmentCount} 个转寄批次`,
+      tone: ship.fee > 0 ? 'warn' : '',
+    },
+    {
+      label: '净利润',
+      value: money(netProfit),
+      sub: sum.sales > 0 ? `利润率 ${margin.toFixed(1)}%` : '销售额 − 成本 − 快递费',
+      tone: netProfit >= 0 ? 'green' : 'red',
     },
     { label: '客单价', value: money(avg), sub: '销售额 ÷ 订单数' },
     { label: '包裹总数', value: count(t.parcels.length), sub: `待认领 ${pendingParcels} 件` },
@@ -406,7 +466,7 @@ function renderBreakdowns(t, orders) {
       { html: `<span style="color:#02743b;font-weight:600">${money(s.profit)}</span>` },
     ]);
   $('platform-table').innerHTML = platformRows.length
-    ? tableHtml(['平台', '订单数', '销售额', '成本', '利润'], platformRows, [1, 2, 3, 4])
+    ? tableHtml(['平台', '订单数', '销售额', '成本', '毛利'], platformRows, [1, 2, 3, 4])
     : '<div class="empty-inline">当前区间暂无订单</div>';
 
   const accountRows = [...groupOrders(orders, accountOf).entries()]
@@ -419,7 +479,7 @@ function renderBreakdowns(t, orders) {
       { html: `<span style="color:#02743b;font-weight:600">${money(s.profit)}</span>` },
     ]);
   $('account-table').innerHTML = accountRows.length
-    ? tableHtml(['账号', '订单数', '销售额', '成本', '利润'], accountRows, [1, 2, 3, 4])
+    ? tableHtml(['账号', '订单数', '销售额', '成本', '毛利'], accountRows, [1, 2, 3, 4])
     : '<div class="empty-inline">当前区间暂无订单</div>';
 }
 
@@ -553,9 +613,13 @@ function renderOverview() {
   const orders = start == null
     ? t.orders
     : t.orders.filter((o) => (Number(o.ordered_at) || 0) >= start);
+  const shipments = start == null
+    ? t.shipments
+    : t.shipments.filter((s) => (Number(s.shipped_at) || 0) >= start);
 
-  $('range-hint').textContent = `${RANGE_LABEL[state.range]} · ${orders.length} 笔订单`;
-  renderKpis(t, orders);
+  $('range-hint').textContent =
+    `${RANGE_LABEL[state.range]} · ${orders.length} 笔订单 · ${shipments.length} 个转寄批次`;
+  renderKpis(t, orders, shipments);
   renderBreakdowns(t, orders);
   renderTrend(t);
   renderParcels(t);
@@ -660,6 +724,38 @@ function renderParcelsTab(t) {
   $('parcels-table').innerHTML = rows.length
     ? tableHtml(['运单号', '快递公司', '状态', '来源', '入库时间', '平台', '账号', '关联订单', '备注'], rows)
     : '<div class="empty-inline">没有匹配的包裹</div>';
+  return rows;
+}
+
+/**
+ * 渲染转寄页签。
+ * @param {object} t 业务表
+ * @returns {Array} 当前筛选后的转寄批次明细
+ */
+function renderShipmentsTab(t) {
+  const counts = parcelCountByShipment(t.parcels);
+  const filtered = searchList(t.shipments, $('shipments-search').value, (shipment) => [
+    shipment.carrier,
+    shipment.tracking_no,
+    shipment.note,
+  ]).sort((a, b) => (Number(b.shipped_at) || 0) - (Number(a.shipped_at) || 0));
+
+  const rows = filtered.map((shipment) => {
+    const fee = Number(shipment.fee) || 0;
+    return [
+      fmtDate(shipment.shipped_at, false),
+      shipment.carrier || '—',
+      shipment.tracking_no || '—',
+      count(counts.get(shipment.id) || 0),
+      { html: money(fee), text: fee.toFixed(2) },
+      shipment.note || '—',
+    ];
+  });
+
+  $('shipments-count').textContent = `共 ${rows.length} 批`;
+  $('shipments-table').innerHTML = rows.length
+    ? tableHtml(['寄出日期', '快递公司', '运单号', '包裹数', '快递费', '备注'], rows, [3, 4])
+    : '<div class="empty-inline">没有匹配的转寄批次</div>';
   return rows;
 }
 
@@ -818,6 +914,7 @@ function renderTab() {
   const renderers = {
     orders: renderOrdersTab,
     parcels: renderParcelsTab,
+    shipments: renderShipmentsTab,
     accounts: renderAccountsTab,
     platforms: renderPlatformsTab,
     products: renderProductsTab,
@@ -931,6 +1028,10 @@ const EXPORT_CONFIG = {
     name: '包裹明细',
     headers: ['运单号', '快递公司', '状态', '来源', '入库时间', '平台', '账号', '关联订单', '备注'],
   },
+  shipments: {
+    name: '转寄批次',
+    headers: ['寄出日期', '快递公司', '运单号', '包裹数', '快递费', '备注'],
+  },
   accounts: {
     name: '账号台账',
     headers: ['平台', '账号别名', '状态', '备注', '创建时间'],
@@ -983,16 +1084,25 @@ function exportSummary() {
   const rows = [];
   const platformGroups = groupOrders(t.orders, platformOf);
   for (const [name, s] of [...platformGroups.entries()].sort((a, b) => b[1].sales - a[1].sales)) {
-    rows.push(['平台汇总', name, s.orderCount, s.sales.toFixed(2), s.cost.toFixed(2), s.profit.toFixed(2)]);
+    rows.push([
+      '平台汇总', name, s.orderCount, s.sales.toFixed(2), s.cost.toFixed(2), s.profit.toFixed(2), '', '',
+    ]);
   }
   const accountGroups = groupOrders(t.orders, accountOf);
   for (const [name, s] of [...accountGroups.entries()].sort((a, b) => b[1].sales - a[1].sales)) {
-    rows.push(['账号汇总', name, s.orderCount, s.sales.toFixed(2), s.cost.toFixed(2), s.profit.toFixed(2)]);
+    rows.push([
+      '账号汇总', name, s.orderCount, s.sales.toFixed(2), s.cost.toFixed(2), s.profit.toFixed(2), '', '',
+    ]);
   }
   const total = sumOrders(t.orders);
-  rows.push(['合计', '', total.orderCount, total.sales.toFixed(2), total.cost.toFixed(2), total.profit.toFixed(2)]);
+  const ship = sumShipments(t.shipments);
+  const netProfit = total.profit - ship.fee;
+  rows.push([
+    '合计', '', total.orderCount, total.sales.toFixed(2), total.cost.toFixed(2),
+    total.profit.toFixed(2), ship.fee.toFixed(2), netProfit.toFixed(2),
+  ]);
 
-  const headers = ['维度', '名称', '订单数', '销售额', '成本', '利润'];
+  const headers = ['维度', '名称', '订单数', '销售额', '成本', '毛利', '快递费', '净利润'];
   download(`经营汇总-${stamp()}.csv`, toCsv(headers, rows));
   toast('已导出经营汇总');
 }
@@ -1002,6 +1112,7 @@ function bindFilters() {
   const map = {
     orders: ['orders-search', 'orders-platform'],
     parcels: ['parcels-search', 'parcels-status'],
+    shipments: ['shipments-search'],
     accounts: ['accounts-search', 'accounts-platform'],
     platforms: ['platforms-search'],
     products: ['products-search'],

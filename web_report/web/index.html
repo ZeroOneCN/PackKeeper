@@ -43,6 +43,7 @@
           <button type="button" data-tab="overview" class="active">概览</button>
           <button type="button" data-tab="orders">订单</button>
           <button type="button" data-tab="parcels">包裹</button>
+          <button type="button" data-tab="shipments">转寄</button>
           <button type="button" data-tab="accounts">账号</button>
           <button type="button" data-tab="platforms">平台</button>
           <button type="button" data-tab="products">商品</button>
@@ -136,6 +137,9 @@
               <option value="">全部状态</option>
               <option value="pending">待认领</option>
               <option value="assigned">已分配</option>
+              <option value="inbound">已入库</option>
+              <option value="outbound">已转寄</option>
+              <option value="done">已完成</option>
               <option value="exception">异常件</option>
             </select>
             <span id="parcels-count" class="toolbar-tip"></span>
@@ -143,6 +147,18 @@
           </div>
           <section class="card">
             <div id="parcels-table" class="table-wrap"></div>
+          </section>
+        </section>
+
+        <section id="panel-shipments" class="panel" hidden>
+          <div class="toolbar">
+            <input id="shipments-search" class="search" type="search"
+              placeholder="搜索快递公司、运单号或备注" />
+            <span id="shipments-count" class="toolbar-tip"></span>
+            <button id="shipments-export" class="btn" type="button">导出筛选结果 CSV</button>
+          </div>
+          <section class="card">
+            <div id="shipments-table" class="table-wrap"></div>
           </section>
         </section>
 

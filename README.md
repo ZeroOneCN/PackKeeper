@@ -5,10 +5,10 @@
 > 到货扫码 → 待认领池 → 分配平台账号 → 代下单/补单号 → 打包转寄 → 快递费与净利润对账
 
 <p>
-  <img alt="release" src="https://img.shields.io/badge/release-1.0%20(4022)-2E7D32">
+  <img alt="release" src="https://img.shields.io/badge/release-1.0%20(4023)-2E7D32">
   <img alt="platform" src="https://img.shields.io/badge/platform-Android%208.0%2B-3DDC84">
   <img alt="flutter" src="https://img.shields.io/badge/Flutter-3.x-02569B">
-  <img alt="storage" src="https://img.shields.io/badge/storage-SQLite%20v4-003B57">
+  <img alt="storage" src="https://img.shields.io/badge/storage-SQLite%20v5-003B57">
   <img alt="offline" src="https://img.shields.io/badge/offline-100%25-6B7280">
 </p>
 
@@ -31,7 +31,7 @@
 
 ## 二、界面预览
 
-> 以下均为真机截图（Android 14，1200×2670），对应构建号 4022。
+> 以下均为真机截图（Android 14，1200×2670），对应构建号 4023。
 
 | 概览 · 快捷操作置顶 | 待认领池 | 订单列表 | 转寄批次 |
 | :---: | :---: | :---: | :---: |
@@ -62,7 +62,7 @@
 - 待认领池本质是「单号池」：扫码、手输、面单识别产生的包裹都先进这里。
 - 状态筛选：全部 / 待认领 / 已分配 / 已入库 / 已出库 / 异常件。
 - 搜索、左滑删除（二次确认）、选中多件批量分配平台账号。
-- 分配后包裹从「待认领」变为「已分配」，归属清晰；对已入库/已出库的包裹重新分配只更新账号，状态不回退。
+| 分配后包裹从「待认领」变为「已分配」，归属清晰；对已入库/已出库的包裹重新分配只更新账号，状态不回退；异常件重新分配会恢复标记异常前的进度状态。 |
 
 ### 3.3 订单
 
@@ -109,7 +109,7 @@
 | 层 | 选型 | 说明 |
 | --- | --- | --- |
 | 客户端 | Flutter 3 / Dart 3 | Android 8.0+，Material 3，`styled_widget` 链式 UI |
-| 本地存储 | SQLite（sqflite，库版本 v4） | 单机离线，v1→v4 自动迁移 |
+| 本地存储 | SQLite（sqflite，库版本 v5） | 单机离线，v1→v5 自动迁移 |
 | 扫码 | `mobile_scanner` | 连续扫码、单次取号、相机权限降级 |
 | 面单识别 | Google ML Kit（端侧中文 OCR） | 规则提取 + 人工核对，不上云 |
 | PC 报表 | Dart 单文件 HTTP 服务 + 原生前端 | `dart compile exe` 一键打包，浏览器 IndexedDB 持久化 |
@@ -181,7 +181,7 @@ adb install -r -t build\app\outputs\flutter-apk\app-arm64-v8a-release.apk
 
 - 首次启动自动建库并写入 7 个平台。
 - 覆盖安装保留本地数据；数据库自动迁移。
-- Debug 验证：`flutter build apk --debug --build-number=4022`。
+- Debug 验证：`flutter build apk --debug --build-number=4023`。
 
 ### 6.2 PC 报表
 
@@ -241,10 +241,11 @@ powershell -ExecutionPolicy Bypass -File web_report\build_web.ps1
 
 ## 十、版本记录
 
-### v1.0（构建号 4022）｜2026-11-25
+### v1.0（构建号 4023）｜2026-11-25
 
 **修复**
 
+- 标记异常后再重新分配归属，不再把异常前的「已入库 / 已出库」替换为「已分配」；数据库新增 `prev_status` 记录异常前状态（库版本 v5，自动迁移）。
 - 重新分配归属不再把「已出库 / 已入库」回退成「已分配」；关联订单、删除账号等同类操作同样保留进度状态。
 - 启动时自动修复历史数据：已在转寄批次却显示「已分配 / 待认领」的包裹恢复为「已出库」。
 - 补单号弹窗按钮被键盘挤压换行/裁切。
@@ -275,7 +276,7 @@ powershell -ExecutionPolicy Bypass -File web_report\build_web.ps1
 | 2026-11-25 | 转寄与快递费（4014） | 转寄 Tab、数据库 v4、净利润口径、备份 v3、Web 转寄页签 |
 | 2026-11-25 | 联动与上线整理（4017） | 批次追加/移出、批次详情展示订单、补单号池选择、设计稿 11 屏 |
 | 2026-11-25 | 布局与扫码（4018/4020） | 快捷操作置顶、扫码取号、重复提示与震动、弹窗单行按钮、真机回归 |
-| 2026-11-25 | 状态一致性修复（4022） | 重新分配归属/关联订单/删除账号不再回退已出库与已入库；启动自动修复历史不一致数据；真机验证已出库包裹重新分配后仍为已出库 |
+| 2026-11-25 | 状态一致性修复（4022/4023） | 重新分配/关联订单/删除账号保留已出库与已入库；异常件记录异常前状态（v5）并在重新分配后恢复；真机验证已入库与已出库两条路径 |
 
 ---
 

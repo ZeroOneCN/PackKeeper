@@ -47,7 +47,7 @@ class AppDatabase {
     final path = p.join(dir, 'packkeeper.db');
     _db = await openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       onOpen: _onOpen,
@@ -64,7 +64,7 @@ class AppDatabase {
   /// 参数：[db] 数据库连接。
   Future<void> _onOpen(Database db) async {
     await db.rawUpdate(
-      'UPDATE parcels SET status = ? '
+      'UPDATE parcels SET status = ?, prev_status = NULL '
       'WHERE shipment_id IS NOT NULL AND status IN (?, ?)',
       [
         ParcelStatus.outbound.name,
@@ -74,7 +74,8 @@ class AppDatabase {
     );
   }
 
-  /// 数据库升级：v1 → v2 新增商品库与订单成本/路径字段；v2 → v3 重排平台顺序。
+  /// 数据库升级：v1 → v2 新增商品库与订单成本/路径字段；v2 → v3 重排平台顺序；
+  /// v3 → v4 新增转寄批次；v4 → v5 记录异常前状态。
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
       await db.execute('''
@@ -113,6 +114,9 @@ class AppDatabase {
       await db.execute(
         'CREATE INDEX idx_parcels_shipment ON parcels (shipment_id)',
       );
+    }
+    if (oldVersion < 5) {
+      await db.execute('ALTER TABLE parcels ADD COLUMN prev_status TEXT');
     }
   }
 
@@ -185,6 +189,7 @@ class AppDatabase {
         account_id TEXT,
         order_id TEXT,
         shipment_id TEXT,
+        prev_status TEXT,
         note TEXT NOT NULL DEFAULT '',
         FOREIGN KEY (account_id) REFERENCES accounts (id)
       )
@@ -410,16 +415,25 @@ class AppDatabase {
     return id;
   }
 
-  /// 进度状态是否应在重新分配/关联订单时保留。
+  /// 归属变更时保留进度状态的 SQL CASE 表达式。
   ///
-  /// 已入库、已出库代表包裹已推进到后续环节，重新分配归属只改账号与订单，
-  /// 不得回退为「已分配」。
-  ///
-  /// 参数：[status] 当前包裹状态名。
-  /// 返回：true 表示保留原状态。
-  bool _keepProgressStatus(String status) =>
-      status == ParcelStatus.inbound.name ||
-      status == ParcelStatus.outbound.name;
+  /// 已入库、已出库保持不变；异常件恢复标记异常前的进度状态；
+  /// 其余（待认领/已分配）统一置为已分配。
+  String get _assignStatusCase =>
+      'CASE '
+      'WHEN status IN (?, ?) THEN status '
+      'WHEN status = ? AND prev_status IN (?, ?) THEN prev_status '
+      'ELSE ? END';
+
+  /// [_assignStatusCase] 对应的占位符参数。
+  List<String> get _assignStatusArgs => [
+    ParcelStatus.inbound.name,
+    ParcelStatus.outbound.name,
+    ParcelStatus.exception.name,
+    ParcelStatus.inbound.name,
+    ParcelStatus.outbound.name,
+    ParcelStatus.assigned.name,
+  ];
 
   /// 更新平台账号信息。
   ///
@@ -476,10 +490,16 @@ class AppDatabase {
     if (rows.isEmpty) return;
     await db.transaction((txn) async {
       await txn.rawUpdate(
-        'UPDATE parcels SET account_id = NULL, '
-        'status = CASE WHEN status IN (?, ?) THEN status ELSE ? END '
+        'UPDATE parcels SET account_id = NULL, prev_status = NULL, '
+        'status = CASE '
+        'WHEN status IN (?, ?) THEN status '
+        'WHEN status = ? AND prev_status IN (?, ?) THEN prev_status '
+        'ELSE ? END '
         'WHERE account_id = ?',
         [
+          ParcelStatus.inbound.name,
+          ParcelStatus.outbound.name,
+          ParcelStatus.exception.name,
           ParcelStatus.inbound.name,
           ParcelStatus.outbound.name,
           ParcelStatus.pending.name,
@@ -680,7 +700,7 @@ class AppDatabase {
       if (removeIds.isNotEmpty) {
         final placeholders = List.filled(removeIds.length, '?').join(', ');
         await txn.rawUpdate(
-          'UPDATE parcels SET shipment_id = NULL, status = ? '
+          'UPDATE parcels SET shipment_id = NULL, status = ?, prev_status = NULL '
           'WHERE shipment_id = ? AND id IN ($placeholders)',
           [ParcelStatus.inbound.name, shipmentId, ...removeIds],
         );
@@ -688,7 +708,8 @@ class AppDatabase {
       if (addIds.isNotEmpty) {
         final placeholders = List.filled(addIds.length, '?').join(', ');
         await txn.rawUpdate(
-          'UPDATE parcels SET shipment_id = ?, status = ? WHERE id IN ($placeholders)',
+          'UPDATE parcels SET shipment_id = ?, status = ?, prev_status = NULL '
+          'WHERE id IN ($placeholders)',
           [shipmentId, ParcelStatus.outbound.name, ...addIds],
         );
       }
@@ -752,7 +773,8 @@ class AppDatabase {
       if (parcelIds.isNotEmpty) {
         final placeholders = List.filled(parcelIds.length, '?').join(', ');
         await txn.rawUpdate(
-          'UPDATE parcels SET shipment_id = ?, status = ? WHERE id IN ($placeholders)',
+          'UPDATE parcels SET shipment_id = ?, status = ?, prev_status = NULL '
+          'WHERE id IN ($placeholders)',
           [id, ParcelStatus.outbound.name, ...parcelIds],
         );
       }
@@ -812,6 +834,7 @@ class AppDatabase {
         {
           'shipment_id': null,
           'status': ParcelStatus.inbound.name,
+          'prev_status': null,
         },
         where: 'shipment_id = ?',
         whereArgs: [id],
@@ -934,27 +957,13 @@ class AppDatabase {
     if (ids.isEmpty) return;
     final db = await database;
     final now = DateTime.now().millisecondsSinceEpoch;
-    // 先读取当前状态：已入库/已出库的包裹只更新归属，不回退状态。
-    final placeholders = List.filled(ids.length, '?').join(', ');
-    final rows = await db.rawQuery(
-      'SELECT id, status FROM parcels WHERE id IN ($placeholders)',
-      ids,
-    );
-    final statusById = {
-      for (final row in rows) row['id'] as String: row['status'] as String?,
-    };
+    // 由 SQL 决定状态：已入库/已出库保留，异常件恢复异常前状态。
     final batch = db.batch();
     for (final id in ids) {
-      final keep = _keepProgressStatus(statusById[id] ?? '');
-      batch.update(
-        'parcels',
-        {
-          'account_id': accountId,
-          'order_id': orderId,
-          if (!keep) 'status': ParcelStatus.assigned.name,
-        },
-        where: 'id = ?',
-        whereArgs: [id],
+      batch.rawUpdate(
+        'UPDATE parcels SET account_id = ?, order_id = ?, prev_status = NULL, '
+        'status = $_assignStatusCase WHERE id = ?',
+        [accountId, orderId, ..._assignStatusArgs, id],
       );
       batch.insert('audit_logs', {
         'action': 'parcel.assign',
@@ -976,11 +985,16 @@ class AppDatabase {
     final now = DateTime.now().millisecondsSinceEpoch;
     final batch = db.batch();
     for (final id in ids) {
-      batch.update(
-        'parcels',
-        {'status': ParcelStatus.exception.name, 'note': reason},
-        where: 'id = ?',
-        whereArgs: [id],
+      batch.rawUpdate(
+        'UPDATE parcels SET prev_status = CASE '
+        'WHEN status = ? THEN prev_status ELSE status END, '
+        'status = ?, note = ? WHERE id = ?',
+        [
+          ParcelStatus.exception.name,
+          ParcelStatus.exception.name,
+          reason,
+          id,
+        ],
       );
       batch.insert('audit_logs', {
         'action': 'parcel.exception',
@@ -1034,16 +1048,10 @@ class AppDatabase {
     if (info.normalized.isNotEmpty) {
       final parcel = await findByTracking(info.normalized);
       if (parcel != null) {
-        await db.update(
-          'parcels',
-          {
-            'account_id': accountId,
-            'order_id': id,
-            if (!_keepProgressStatus(parcel.status.name))
-              'status': ParcelStatus.assigned.name,
-          },
-          where: 'id = ?',
-          whereArgs: [parcel.id],
+        await db.rawUpdate(
+          'UPDATE parcels SET account_id = ?, order_id = ?, prev_status = NULL, '
+          'status = $_assignStatusCase WHERE id = ?',
+          [accountId, id, ..._assignStatusArgs, parcel.id],
         );
         await _audit(db, 'parcel.assigned_by_order', 'parcel', parcel.id, id);
       }
@@ -1383,16 +1391,10 @@ class AppDatabase {
     if (info.normalized.isEmpty) return;
     final parcel = await findByTracking(info.normalized);
     if (parcel == null) return;
-    await db.update(
-      'parcels',
-      {
-        'account_id': accountId,
-        'order_id': orderId,
-        if (!_keepProgressStatus(parcel.status.name))
-          'status': ParcelStatus.assigned.name,
-      },
-      where: 'id = ?',
-      whereArgs: [parcel.id],
+    await db.rawUpdate(
+      'UPDATE parcels SET account_id = ?, order_id = ?, prev_status = NULL, '
+      'status = $_assignStatusCase WHERE id = ?',
+      [accountId, orderId, ..._assignStatusArgs, parcel.id],
     );
     await _audit(db, 'parcel.assigned_by_order', 'parcel', parcel.id, orderId);
   }

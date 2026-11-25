@@ -250,7 +250,6 @@ class _ProductsPageState extends State<ProductsPage> {
     );
   }
 
-  /// 商品卡片：左滑出现「编辑 / 删除」，按钮与卡片同高贴合，点击卡片不进入编辑。
   /// 商品卡片：左滑出现「编辑 / 删除」，动作按钮裁剪在卡片圆角内，点击卡片不进入编辑。
   Widget _buildCard(ProductModel product) {
     return Padding(
@@ -280,46 +279,46 @@ class _ProductsPageState extends State<ProductsPage> {
         child: AppCard(
           seamless: true,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          child: Row(
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(product.name)
-                    .fontSize(14)
-                    .fontWeight(FontWeight.w600)
-                    .textColor(AppColors.ink),
-                Text(
-                  [
-                    if (product.spec.isNotEmpty) product.spec,
-                    '成本 ¥${_money(product.cost)}',
-                    '售价 ¥${_money(product.price)}',
-                    if (product.note.isNotEmpty) product.note,
-                  ].join(' · '),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                )
-                    .fontSize(12)
-                    .textColor(AppColors.ink3)
-                    .padding(top: 3),
-              ],
-            ).expanded(),
-            Text('利润 ¥${_money(product.profit)}')
-                .fontSize(12)
-                .fontWeight(FontWeight.w600)
-                .textColor(product.profit >= 0
-                    ? AppColors.brandDeep
-                    : AppColors.danger)
-                .padding(left: 8)
-                .decorated(
-                  color: product.profit >= 0
-                      ? AppColors.brandSoft
-                      : AppColors.dangerSoft,
-                  borderRadius: BorderRadius.circular(999),
-                )
-                .padding(horizontal: 8, vertical: 3),
-          ],
-        ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    product.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ).fontSize(14).fontWeight(FontWeight.w600).textColor(AppColors.ink).expanded(),
+                  Text('利润 ¥${_money(product.profit)}')
+                      .fontSize(12)
+                      .fontWeight(FontWeight.w600)
+                      .textColor(
+                        product.profit >= 0
+                            ? AppColors.brandDeep
+                            : AppColors.danger,
+                      )
+                      .padding(left: 8)
+                      .decorated(
+                        color: product.profit >= 0
+                            ? AppColors.brandSoft
+                            : AppColors.dangerSoft,
+                        borderRadius: BorderRadius.circular(999),
+                      )
+                      .padding(horizontal: 8, vertical: 3),
+                ],
+              ),
+              Text(
+                [
+                  if (product.spec.isNotEmpty) product.spec,
+                  '成本 ¥${_money(product.cost)}',
+                  '售价 ¥${_money(product.price)}',
+                  if (product.note.isNotEmpty) product.note,
+                ].join(' · '),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ).fontSize(12).textColor(AppColors.ink3).padding(top: 4),
+            ],
+          ),
       ),
       ),
     );

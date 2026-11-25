@@ -244,8 +244,8 @@ class _OrdersPageState extends State<OrdersPage> {
   Widget _buildOrderCard(OrderView view) {
     final order = view.order;
     final pending = order.trackingNo.isEmpty;
-    Widget buildCard({required bool seamless}) => AppCard(
-      seamless: seamless,
+    final card = AppCard(
+      seamless: true,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       child: Row(
         children: [
@@ -280,23 +280,69 @@ class _OrdersPageState extends State<OrdersPage> {
         ],
       ),
     );
-    if (!pending) return buildCard(seamless: false);
     return SlideActionCard(
       slideKey: ValueKey(order.id),
       groupTag: 'orders',
-      extentRatio: 0.26,
+      extentRatio: pending ? 0.38 : 0.24,
       actions: [
+        if (pending)
+          SlidableAction(
+            onPressed: (_) => _fillTracking(view),
+            backgroundColor: AppColors.brand,
+            foregroundColor: Colors.white,
+            icon: Icons.local_shipping_outlined,
+            label: '补单号',
+            labelStyle: const TextStyle(fontSize: 12),
+          ),
         SlidableAction(
-          onPressed: (_) => _fillTracking(view),
-          backgroundColor: AppColors.brand,
+          onPressed: (_) => _confirmDelete(view),
+          backgroundColor: AppColors.danger,
           foregroundColor: Colors.white,
-          icon: Icons.local_shipping_outlined,
-          label: '补单号',
+          icon: Icons.delete_outline,
+          label: '删除',
           labelStyle: const TextStyle(fontSize: 12),
         ),
       ],
-      child: buildCard(seamless: true),
+      child: card,
     );
+  }
+
+  /// 删除订单二次确认；已关联包裹会保留并解除关联。
+  ///
+  /// 参数：[view] 目标订单。
+  Future<void> _confirmDelete(OrderView view) async {
+    final name = view.order.title.isEmpty
+        ? '这笔订单'
+        : '「${view.order.title}」';
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('删除订单'),
+        content: Text('确认删除$name？已关联的包裹会保留，删除后不可恢复。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await AppDatabase.instance.deleteOrder(view.order.id);
+    } catch (_) {
+      if (!mounted) return;
+      showToast(context, '删除失败，请重试');
+      return;
+    }
+    if (!mounted) return;
+    showToast(context, '订单已删除');
+    bumpDbRevision();
   }
 
   @override

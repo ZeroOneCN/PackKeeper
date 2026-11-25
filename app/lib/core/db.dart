@@ -7,13 +7,24 @@ import 'tracking.dart';
 
 /// 平台种子数据：首次建库时写入，用户可继续自建。
 const _seedPlatforms = <(String, int)>[
-  ('淘宝', 0xFFFF5000),
-  ('拼多多', 0xFFE02E24),
   ('京东', 0xFFE1251B),
-  ('1688', 0xFFFF6A00),
+  ('淘宝', 0xFFFF5000),
   ('抖音', 0xFF161823),
+  ('拼多多', 0xFFE02E24),
   ('小红书', 0xFFFF2442),
+  ('1688', 0xFFFF6A00),
   ('其他', 0xFF64748B),
+];
+
+/// 平台默认展示顺序（账号台账等处统一按此排序）。
+const _platformOrder = <String>[
+  '京东',
+  '淘宝',
+  '抖音',
+  '拼多多',
+  '小红书',
+  '1688',
+  '其他',
 ];
 
 /// 本地 SQLite 数据层（P1 单机版）。
@@ -36,7 +47,7 @@ class AppDatabase {
     final path = p.join(dir, 'packkeeper.db');
     _db = await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
@@ -44,7 +55,7 @@ class AppDatabase {
     return _db!;
   }
 
-  /// 数据库升级：v1 → v2 新增商品库与订单的成本/履约路径字段。
+  /// 数据库升级：v1 → v2 新增商品库与订单成本/路径字段；v2 → v3 重排平台顺序。
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
       await db.execute('''
@@ -62,6 +73,39 @@ class AppDatabase {
       await db.execute('ALTER TABLE orders ADD COLUMN cost REAL');
       await db.execute(
         "ALTER TABLE orders ADD COLUMN route TEXT NOT NULL DEFAULT 'warehouse'",
+      );
+    }
+    if (oldVersion < 3) {
+      await _applyPlatformOrder(db);
+    }
+  }
+
+  /// 按 [_platformOrder] 重排现有平台，其余自建平台排在末尾。
+  ///
+  /// 参数：[db] 数据库连接。
+  Future<void> _applyPlatformOrder(DatabaseExecutor db) async {
+    for (var i = 0; i < _platformOrder.length; i++) {
+      await db.update(
+        'platforms',
+        {'sort': i},
+        where: 'name = ?',
+        whereArgs: [_platformOrder[i]],
+      );
+    }
+    final placeholders = List.filled(_platformOrder.length, '?').join(', ');
+    final others = await db.query(
+      'platforms',
+      columns: ['id'],
+      where: 'name NOT IN ($placeholders)',
+      whereArgs: _platformOrder,
+      orderBy: 'sort ASC, created_at ASC',
+    );
+    for (var i = 0; i < others.length; i++) {
+      await db.update(
+        'platforms',
+        {'sort': 100 + i},
+        where: 'id = ?',
+        whereArgs: [others[i]['id']],
       );
     }
   }
@@ -797,6 +841,35 @@ class AppDatabase {
     );
   }
 
+  /// 删除订单；已关联的包裹保留并解除关联。
+  ///
+  /// 参数：[id] 订单主键。
+  Future<void> deleteOrder(String id) async {
+    final db = await database;
+    final rows = await db.query(
+      'orders',
+      columns: ['title', 'platform_order_no'],
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (rows.isEmpty) return;
+    await db.transaction((txn) async {
+      await txn.update(
+        'parcels',
+        {'order_id': null},
+        where: 'order_id = ?',
+        whereArgs: [id],
+      );
+      await txn.delete('orders', where: 'id = ?', whereArgs: [id]);
+    });
+    final title = (rows.first['title'] as String?)?.trim() ?? '';
+    final label = title.isNotEmpty
+        ? title
+        : ((rows.first['platform_order_no'] as String?) ?? '');
+    await _audit(db, 'order.delete', 'order', id, label);
+  }
+
   /// 统计某个时间区间内的订单经营数据（销售额、成本、利润）。
   ///
   /// 参数：[start] 统计起始时间（含）；[end] 可选结束时间（不含）。
@@ -1056,6 +1129,7 @@ class AppDatabase {
                 'parcels=${tables['parcels']?.length ?? 0}',
         'ts': DateTime.now().millisecondsSinceEpoch,
       });
+      await _applyPlatformOrder(txn);
     });
     return (
       accounts: tables['accounts']?.length ?? 0,

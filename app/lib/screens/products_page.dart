@@ -278,6 +278,7 @@ class _ProductsPageState extends State<ProductsPage> {
           ),
         ],
         child: AppCard(
+          seamless: true,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           child: Row(
           children: [

@@ -24,6 +24,7 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
+  final TextEditingController _trackingCtrl = TextEditingController();
   DashboardStats? _stats;
   List<ParcelModel> _recent = const [];
   List<OrderView> _pendingOrders = const [];
@@ -41,6 +42,7 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   void dispose() {
     dbRevision.removeListener(_load);
+    _trackingCtrl.dispose();
     super.dispose();
   }
 
@@ -128,13 +130,13 @@ class _DashboardPageState extends State<DashboardPage> {
   ///
   /// 参数：[view] 待补单号的订单。
   Future<void> _fillTracking(OrderView view) async {
-    final controller = TextEditingController();
+    _trackingCtrl.text = '';
     final submitted = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('补录物流单号'),
         content: TextField(
-          controller: controller,
+          controller: _trackingCtrl,
           autofocus: true,
           textCapitalization: TextCapitalization.characters,
           decoration: appInput(hint: '粘贴或扫码填入物流单号'),
@@ -145,21 +147,17 @@ class _DashboardPageState extends State<DashboardPage> {
             child: const Text('取消'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            onPressed: () => Navigator.pop(ctx, _trackingCtrl.text.trim()),
             child: const Text('保存'),
           ),
         ],
       ),
     );
-    if (submitted == null || submitted.isEmpty) {
-      controller.dispose();
-      return;
-    }
+    if (submitted == null || submitted.isEmpty) return;
     await AppDatabase.instance.updateOrderTracking(
       orderId: view.order.id,
       trackingNo: submitted,
     );
-    controller.dispose();
     if (!mounted) return;
     bumpDbRevision();
     showToast(context, '物流单号已补录，包裹到货扫码后自动合并');
@@ -567,30 +565,52 @@ class _BusinessCard extends StatelessWidget {
       ),
     ];
     return AppCard(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 14),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      child: Column(
         children: [
-          for (final item in items)
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(item.$2)
-                      .fontSize(17)
-                      .fontWeight(FontWeight.w700)
-                      .textColor(item.$3)
-                      .textStyle(const TextStyle(height: 1.2)),
-                ),
-                Text(item.$1)
-                    .fontSize(11)
-                    .textColor(AppColors.ink3)
-                    .padding(top: 5),
-              ],
-            ).expanded(),
+          Row(
+            children: [
+              _buildCell(items[0]).expanded(),
+              Container(width: 1, height: 34, color: AppColors.line),
+              _buildCell(items[1]).expanded(),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Container(height: 1, color: AppColors.line),
+          ),
+          Row(
+            children: [
+              _buildCell(items[2]).expanded(),
+              Container(width: 1, height: 34, color: AppColors.line),
+              _buildCell(items[3]).expanded(),
+            ],
+          ),
         ],
       ),
+    );
+  }
+
+  /// 单个指标：金额在上、名称在下，两列排布留出更多数字空间。
+  ///
+  /// 参数：[item] 名称、数值与颜色。
+  Widget _buildCell((String, String, Color) item) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(item.$2)
+              .fontSize(17)
+              .fontWeight(FontWeight.w700)
+              .textColor(item.$3)
+              .textStyle(const TextStyle(height: 1.2)),
+        ),
+        Text(item.$1)
+            .fontSize(11)
+            .textColor(AppColors.ink3)
+            .padding(top: 5),
+      ],
     );
   }
 }

@@ -284,6 +284,7 @@ class _InboxPageState extends State<InboxPage> {
           ),
         ],
         child: AppCard(
+          seamless: true,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         borderColor: selected ? AppColors.brand : AppColors.line,
         onTap: () => _toggle(parcel),

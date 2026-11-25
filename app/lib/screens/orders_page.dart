@@ -244,7 +244,8 @@ class _OrdersPageState extends State<OrdersPage> {
   Widget _buildOrderCard(OrderView view) {
     final order = view.order;
     final pending = order.trackingNo.isEmpty;
-    final card = AppCard(
+    Widget buildCard({required bool seamless}) => AppCard(
+      seamless: seamless,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       child: Row(
         children: [
@@ -279,7 +280,7 @@ class _OrdersPageState extends State<OrdersPage> {
         ],
       ),
     );
-    if (!pending) return card;
+    if (!pending) return buildCard(seamless: false);
     return SlideActionCard(
       slideKey: ValueKey(order.id),
       groupTag: 'orders',
@@ -294,7 +295,7 @@ class _OrdersPageState extends State<OrdersPage> {
           labelStyle: const TextStyle(fontSize: 12),
         ),
       ],
-      child: card,
+      child: buildCard(seamless: true),
     );
   }
 

@@ -60,7 +60,9 @@ class SlideActionCard extends StatelessWidget {
 /// 统一的白色圆角卡片。
 ///
 /// 参数：[child] 卡片内容；[padding] 内边距；[onTap] 点击回调；
-/// [color] 背景色；[borderColor] 边框色。
+/// [color] 背景色；[borderColor] 边框色；[seamless] 为 true 时不裁圆角、
+/// 不画边框，由外层 [SlideActionCard] 统一裁剪，避免左滑时卡片与动作
+/// 按钮之间出现弧形缝隙。
 /// 返回：链式构造的圆角卡片（可点击时带水波纹）。
 class AppCard extends StatelessWidget {
   const AppCard({
@@ -70,6 +72,7 @@ class AppCard extends StatelessWidget {
     this.onTap,
     this.color,
     this.borderColor,
+    this.seamless = false,
   }) : contentPadding = padding;
 
   final Widget child;
@@ -79,6 +82,9 @@ class AppCard extends StatelessWidget {
   final VoidCallback? onTap;
   final Color? color;
   final Color? borderColor;
+
+  /// 是否交给外层统一裁剪（左滑卡片内使用）。
+  final bool seamless;
 
   @override
   Widget build(BuildContext context) {
@@ -94,11 +100,19 @@ class AppCard extends StatelessWidget {
     if (onTap != null) {
       card = card
           .ripple(
-            customBorder: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.all(Radius.circular(kCardRadius)),
+            customBorder: RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(
+                Radius.circular(seamless ? 0 : kCardRadius),
+              ),
             ),
           )
           .gestures(onTap: onTap);
+    }
+    if (seamless) {
+      return card.decorated(
+        color: color ?? AppColors.surface,
+        borderRadius: BorderRadius.zero,
+      );
     }
     return card
         .clipRRect(all: kCardRadius)

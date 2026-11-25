@@ -810,6 +810,7 @@ class _AccountsPageState extends State<AccountsPage> {
           ),
         ],
         child: AppCard(
+          seamless: true,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           child: Row(
             children: [

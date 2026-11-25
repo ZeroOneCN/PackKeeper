@@ -75,12 +75,15 @@ p {
   border-radius: 12px;
   background: linear-gradient(135deg, var(--brand), var(--brand-deep));
   color: #fff;
-  font-size: 18px;
-  font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
   box-shadow: 0 6px 14px rgba(11, 168, 92, 0.28);
+}
+
+.logo svg {
+  width: 22px;
+  height: 22px;
 }
 
 .brand-text h1 {

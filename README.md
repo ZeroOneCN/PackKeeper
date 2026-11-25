@@ -5,7 +5,7 @@
 > 到货扫码 → 待认领池 → 分配平台账号 → 代下单/补单号 → 打包转寄 → 快递费与净利润对账
 
 <p>
-  <img alt="release" src="https://img.shields.io/badge/release-1.0%20(4023)-2E7D32">
+  <img alt="release" src="https://img.shields.io/badge/release-1.0%20(4024)-2E7D32">
   <img alt="platform" src="https://img.shields.io/badge/platform-Android%208.0%2B-3DDC84">
   <img alt="flutter" src="https://img.shields.io/badge/Flutter-3.x-02569B">
   <img alt="storage" src="https://img.shields.io/badge/storage-SQLite%20v5-003B57">
@@ -31,7 +31,7 @@
 
 ## 二、界面预览
 
-> 以下均为真机截图（Android 14，1200×2670），对应构建号 4023。
+> 以下均为真机截图（Android 14，1200×2670），对应构建号 4024。
 
 | 概览 · 快捷操作置顶 | 待认领池 | 订单列表 | 转寄批次 |
 | :---: | :---: | :---: | :---: |
@@ -190,7 +190,7 @@ adb install -r -t build\app\outputs\flutter-apk\app-arm64-v8a-release.apk
 
 - 首次启动自动建库并写入 7 个平台。
 - 覆盖安装保留本地数据；数据库自动迁移。
-- Debug 验证：`flutter build apk --debug --build-number=4023`。
+- Debug 验证：`flutter build apk --debug --build-number=4024`。
 
 ### 6.2 PC 报表
 
@@ -233,7 +233,14 @@ powershell -ExecutionPolicy Bypass -File web_report\build_web.ps1
 
 ## 九、版本记录
 
-### v1.0（构建号 4023）｜2026-11-25
+### v1.0（构建号 4024）｜2026-11-25
+
+**新增**
+
+- 应用图标与 Web 端品牌图形统一为新版包裹 LOGO，采用主题绿（#0BA85C）；Android 8+ 使用自适应图标。
+- 概览快捷操作置顶（扫码入库 / 面单识别 / 代下单 / 商品库）。
+- 补录物流单号新增扫码取号页，扫到即回填；弹窗按钮「扫码 / 选择 / 取消 / 保存」并列一行。
+- 补单号扫码命中库中包裹时提示保存后自动绑定。
 
 **修复**
 
@@ -242,12 +249,6 @@ powershell -ExecutionPolicy Bypass -File web_report\build_web.ps1
 - 启动时自动修复历史数据：已在转寄批次却显示「已分配 / 待认领」的包裹恢复为「已出库」。
 - 补单号弹窗按钮被键盘挤压换行/裁切。
 - 编辑批次按时间排序误勾选、移出包裹后状态未恢复等问题。
-
-**新增**
-
-- 概览快捷操作置顶（扫码入库 / 面单识别 / 代下单 / 商品库）。
-- 补录物流单号新增扫码取号页，扫到即回填；弹窗按钮「扫码 / 选择 / 取消 / 保存」并列一行。
-- 补单号扫码命中库中包裹时提示保存后自动绑定。
 
 **优化**
 

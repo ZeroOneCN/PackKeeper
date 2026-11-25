@@ -50,9 +50,28 @@ class AppDatabase {
       version: 4,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
+      onOpen: _onOpen,
       onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
     );
     return _db!;
+  }
+
+  /// 打开数据库时修正历史不一致状态。
+  ///
+  /// 旧版本重新分配归属会把「已出库」回退成「已分配/待认领」，
+  /// 这里对已加入转寄批次的包裹统一恢复为已出库。
+  ///
+  /// 参数：[db] 数据库连接。
+  Future<void> _onOpen(Database db) async {
+    await db.rawUpdate(
+      'UPDATE parcels SET status = ? '
+      'WHERE shipment_id IS NOT NULL AND status IN (?, ?)',
+      [
+        ParcelStatus.outbound.name,
+        ParcelStatus.pending.name,
+        ParcelStatus.assigned.name,
+      ],
+    );
   }
 
   /// 数据库升级：v1 → v2 新增商品库与订单成本/路径字段；v2 → v3 重排平台顺序。
@@ -391,6 +410,17 @@ class AppDatabase {
     return id;
   }
 
+  /// 进度状态是否应在重新分配/关联订单时保留。
+  ///
+  /// 已入库、已出库代表包裹已推进到后续环节，重新分配归属只改账号与订单，
+  /// 不得回退为「已分配」。
+  ///
+  /// 参数：[status] 当前包裹状态名。
+  /// 返回：true 表示保留原状态。
+  bool _keepProgressStatus(String status) =>
+      status == ParcelStatus.inbound.name ||
+      status == ParcelStatus.outbound.name;
+
   /// 更新平台账号信息。
   ///
   /// 参数：[id] 账号主键；[platformId] 所属平台；[alias] 账号别名；
@@ -445,11 +475,16 @@ class AppDatabase {
     );
     if (rows.isEmpty) return;
     await db.transaction((txn) async {
-      await txn.update(
-        'parcels',
-        {'account_id': null, 'status': ParcelStatus.pending.name},
-        where: 'account_id = ?',
-        whereArgs: [id],
+      await txn.rawUpdate(
+        'UPDATE parcels SET account_id = NULL, '
+        'status = CASE WHEN status IN (?, ?) THEN status ELSE ? END '
+        'WHERE account_id = ?',
+        [
+          ParcelStatus.inbound.name,
+          ParcelStatus.outbound.name,
+          ParcelStatus.pending.name,
+          id,
+        ],
       );
       await txn.delete('accounts', where: 'id = ?', whereArgs: [id]);
     });
@@ -899,14 +934,24 @@ class AppDatabase {
     if (ids.isEmpty) return;
     final db = await database;
     final now = DateTime.now().millisecondsSinceEpoch;
+    // 先读取当前状态：已入库/已出库的包裹只更新归属，不回退状态。
+    final placeholders = List.filled(ids.length, '?').join(', ');
+    final rows = await db.rawQuery(
+      'SELECT id, status FROM parcels WHERE id IN ($placeholders)',
+      ids,
+    );
+    final statusById = {
+      for (final row in rows) row['id'] as String: row['status'] as String?,
+    };
     final batch = db.batch();
     for (final id in ids) {
+      final keep = _keepProgressStatus(statusById[id] ?? '');
       batch.update(
         'parcels',
         {
           'account_id': accountId,
           'order_id': orderId,
-          'status': ParcelStatus.assigned.name,
+          if (!keep) 'status': ParcelStatus.assigned.name,
         },
         where: 'id = ?',
         whereArgs: [id],
@@ -994,7 +1039,8 @@ class AppDatabase {
           {
             'account_id': accountId,
             'order_id': id,
-            'status': ParcelStatus.assigned.name,
+            if (!_keepProgressStatus(parcel.status.name))
+              'status': ParcelStatus.assigned.name,
           },
           where: 'id = ?',
           whereArgs: [parcel.id],
@@ -1342,7 +1388,8 @@ class AppDatabase {
       {
         'account_id': accountId,
         'order_id': orderId,
-        'status': ParcelStatus.assigned.name,
+        if (!_keepProgressStatus(parcel.status.name))
+          'status': ParcelStatus.assigned.name,
       },
       where: 'id = ?',
       whereArgs: [parcel.id],

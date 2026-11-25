@@ -854,6 +854,55 @@ class AppDatabase {
     }).toList();
   }
 
+  /// 查询订单列表（联表带出账号与平台信息）。
+  ///
+  /// 参数：[keyword] 可选关键词，匹配商品标题、平台单号、物流单号、地址与账号别名；
+  /// [platformId] 可选平台过滤；[limit] 返回上限。
+  Future<List<OrderView>> orderList({
+    String keyword = '',
+    String? platformId,
+    int limit = 200,
+  }) async {
+    final db = await database;
+    final where = <String>[];
+    final args = <Object?>[];
+    final trimmed = keyword.trim();
+    if (trimmed.isNotEmpty) {
+      where.add(
+        '(o.title LIKE ? OR o.platform_order_no LIKE ? OR o.tracking_no LIKE ? '
+        'OR o.address_text LIKE ? OR a.alias LIKE ?)',
+      );
+      final like = '%$trimmed%';
+      for (var i = 0; i < 5; i++) {
+        args.add(like);
+      }
+    }
+    if (platformId != null && platformId.isNotEmpty) {
+      where.add('a.platform_id = ?');
+      args.add(platformId);
+    }
+    args.add(limit);
+    final rows = await db.rawQuery(
+      '''
+      SELECT o.*, a.alias AS account_alias, p.name AS platform_name
+      FROM orders o
+      JOIN accounts a ON a.id = o.account_id
+      JOIN platforms p ON p.id = a.platform_id
+      ${where.isEmpty ? '' : 'WHERE ${where.join(' AND ')}'}
+      ORDER BY o.ordered_at DESC, o.created_at DESC
+      LIMIT ?
+      ''',
+      args,
+    );
+    return rows.map((row) {
+      return OrderView(
+        order: OrderModel.fromMap(row),
+        accountAlias: (row['account_alias'] as String?) ?? '',
+        platformName: (row['platform_name'] as String?) ?? '',
+      );
+    }).toList();
+  }
+
   /// 查询某物流单号已被多少笔订单占用。
   ///
   /// 参数：[trackingNo] 原始物流单号（内部会做规范化）。

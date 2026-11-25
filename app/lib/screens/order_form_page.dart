@@ -94,9 +94,6 @@ class _OrderFormPageState extends State<OrderFormPage> {
                       shape: BoxShape.circle,
                     ),
                     title: Text(view.title),
-                    subtitle: view.account.owner.isEmpty
-                        ? null
-                        : Text('归属 ${view.account.owner}'),
                     trailing: _accountId == view.account.id
                         ? const Icon(Icons.check, color: AppColors.brand, size: 20)
                         : null,

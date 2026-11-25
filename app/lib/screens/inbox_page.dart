@@ -261,7 +261,7 @@ class _InboxPageState extends State<InboxPage> {
         .padding(right: 8);
   }
 
-  /// 单个包裹卡片：左滑出现「删除」。
+  /// 单个包裹卡片：左滑出现「删除」，动作按钮裁剪在卡片圆角内。
   Widget _buildItem(ParcelModel parcel) {
     final selected = _selected.contains(parcel.id);
     final accountName = parcel.accountId == null
@@ -269,23 +269,20 @@ class _InboxPageState extends State<InboxPage> {
         : _accountNames[parcel.accountId!] ?? '';
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Slidable(
-        key: ValueKey(parcel.id),
+      child: SlideActionCard(
+        slideKey: ValueKey(parcel.id),
         groupTag: 'inbox',
-        endActionPane: ActionPane(
-          motion: const ScrollMotion(),
-          extentRatio: 0.24,
-          children: [
-            SlidableAction(
-              onPressed: (_) => _deleteParcel(parcel),
-              backgroundColor: AppColors.danger,
-              foregroundColor: Colors.white,
-              icon: Icons.delete_outline,
-              label: '删除',
-              labelStyle: const TextStyle(fontSize: 12),
-            ),
-          ],
-        ),
+        extentRatio: 0.24,
+        actions: [
+          SlidableAction(
+            onPressed: (_) => _deleteParcel(parcel),
+            backgroundColor: AppColors.danger,
+            foregroundColor: Colors.white,
+            icon: Icons.delete_outline,
+            label: '删除',
+            labelStyle: const TextStyle(fontSize: 12),
+          ),
+        ],
         child: AppCard(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         borderColor: selected ? AppColors.brand : AppColors.line,

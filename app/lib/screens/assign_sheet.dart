@@ -150,11 +150,6 @@ class _AssignSheetState extends State<AssignSheet> {
                   .fontSize(14)
                   .fontWeight(FontWeight.w600)
                   .textColor(AppColors.ink),
-              if (view.account.owner.isNotEmpty)
-                Text('归属人 ${view.account.owner}')
-                    .fontSize(11)
-                    .textColor(AppColors.ink3)
-                    .padding(top: 2),
             ],
           ).expanded(),
           Icon(

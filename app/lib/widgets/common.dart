@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:styled_widget/styled_widget.dart';
 
 import '../core/models.dart';
@@ -6,6 +7,55 @@ import '../core/theme.dart';
 
 /// 卡片圆角半径。
 const double kCardRadius = 14;
+
+/// 左滑操作卡片。
+///
+/// 把 [Slidable] 包进卡片圆角内，动作按钮被同一套圆角与外框裁剪，
+/// 视觉上属于卡片本身，而不是卡片外侧单独的一块。
+///
+/// 参数：[slideKey] 滑动项主键；[groupTag] 同一列表的自动收起分组；
+/// [extentRatio] 动作区占卡片宽度的比例；[actions] 动作按钮列表；
+/// [child] 卡片内容（通常是 [AppCard]）。
+class SlideActionCard extends StatelessWidget {
+  const SlideActionCard({
+    super.key,
+    required this.slideKey,
+    required this.groupTag,
+    required this.extentRatio,
+    required this.actions,
+    required this.child,
+  });
+
+  final Key slideKey;
+  final String groupTag;
+  final double extentRatio;
+  final List<Widget> actions;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      position: DecorationPosition.foreground,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(kCardRadius),
+        border: Border.all(color: AppColors.line),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(kCardRadius),
+        child: Slidable(
+          key: slideKey,
+          groupTag: groupTag,
+          endActionPane: ActionPane(
+            motion: const ScrollMotion(),
+            extentRatio: extentRatio,
+            children: actions,
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
 
 /// 统一的白色圆角卡片。
 ///

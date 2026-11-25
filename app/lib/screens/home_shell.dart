@@ -7,8 +7,9 @@ import '../widgets/common.dart';
 import 'accounts_page.dart';
 import 'dashboard_page.dart';
 import 'inbox_page.dart';
+import 'orders_page.dart';
 
-/// 应用主壳：底部三个主 Tab（工作概览 / 待认领池 / 账号台账）。
+/// 应用主壳：底部四个主 Tab（工作概览 / 待认领池 / 订单列表 / 账号台账）。
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
 
@@ -52,6 +53,7 @@ class _HomeShellState extends State<HomeShell> {
           children: [
             DashboardPage(onGoTab: (i) => setState(() => _index = i)),
             const InboxPage(),
+            const OrdersPage(),
             const AccountsPage(),
           ],
         ),
@@ -69,6 +71,11 @@ class _HomeShellState extends State<HomeShell> {
                   icon: Icon(Icons.inbox_outlined),
                   selectedIcon: Icon(Icons.inbox),
                   label: '待认领池',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.receipt_long_outlined),
+                  selectedIcon: Icon(Icons.receipt_long),
+                  label: '订单列表',
                 ),
                 NavigationDestination(
                   icon: Icon(Icons.badge_outlined),

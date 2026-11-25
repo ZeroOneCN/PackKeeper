@@ -238,7 +238,7 @@ class _DashboardPageState extends State<DashboardPage> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
           children: [
-            Text('$greeting，李主管')
+            Text('$greeting，老板')
                 .fontSize(24)
                 .fontWeight(FontWeight.w700)
                 .textColor(AppColors.ink)

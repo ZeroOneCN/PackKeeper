@@ -51,7 +51,7 @@ class _BackupSheetState extends State<_BackupSheet> {
       final stamp =
           '${now.year}${_two(now.month)}${_two(now.day)}-'
           '${_two(now.hour)}${_two(now.minute)}';
-      final file = File(p.join(dir.path, 'packkeeper-$stamp.json'));
+      final file = File(p.join(dir.path, '包裹管家备份-$stamp.json'));
       await file.writeAsString(
         const JsonEncoder.withIndent('  ').convert(payload),
       );

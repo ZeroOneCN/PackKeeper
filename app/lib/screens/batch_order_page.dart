@@ -81,9 +81,6 @@ class _BatchOrderPageState extends State<BatchOrderPage> {
                       shape: BoxShape.circle,
                     ),
                     title: Text(view.title),
-                    subtitle: view.account.owner.isEmpty
-                        ? null
-                        : Text('归属 ${view.account.owner}'),
                     trailing: _accountId == view.account.id
                         ? const Icon(
                             Icons.check,

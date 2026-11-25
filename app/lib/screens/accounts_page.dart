@@ -33,7 +33,6 @@ class AccountsPage extends StatefulWidget {
 class _AccountsPageState extends State<AccountsPage> {
   final TextEditingController _searchCtrl = TextEditingController();
   final TextEditingController _aliasCtrl = TextEditingController();
-  final TextEditingController _ownerCtrl = TextEditingController();
   final TextEditingController _noteCtrl = TextEditingController();
   final TextEditingController _platformNameCtrl = TextEditingController();
 
@@ -54,7 +53,6 @@ class _AccountsPageState extends State<AccountsPage> {
     dbRevision.removeListener(_load);
     _searchCtrl.dispose();
     _aliasCtrl.dispose();
-    _ownerCtrl.dispose();
     _noteCtrl.dispose();
     _platformNameCtrl.dispose();
     super.dispose();
@@ -86,7 +84,6 @@ class _AccountsPageState extends State<AccountsPage> {
     }
     final isEdit = editing != null;
     _aliasCtrl.text = editing?.account.alias ?? '';
-    _ownerCtrl.text = editing?.account.owner ?? '';
     _noteCtrl.text = editing?.account.note ?? '';
     var platformId =
         editing?.account.platformId ?? _platformId ?? _platforms.first.id;
@@ -159,10 +156,6 @@ class _AccountsPageState extends State<AccountsPage> {
                           .textColor(AppColors.danger),
                     ).padding(top: 4),
                   TextField(
-                    controller: _ownerCtrl,
-                    decoration: appInput(label: '归属员工', hint: '可留空'),
-                  ).padding(top: 10),
-                  TextField(
                     controller: _noteCtrl,
                     decoration: appInput(label: '备注', hint: '手机号尾号等线索'),
                   ).padding(top: 10),
@@ -212,7 +205,7 @@ class _AccountsPageState extends State<AccountsPage> {
                               id: editing.account.id,
                               platformId: platformId,
                               alias: _aliasCtrl.text,
-                              owner: _ownerCtrl.text,
+                              owner: editing.account.owner,
                               note: _noteCtrl.text,
                               status: status,
                             );
@@ -220,7 +213,6 @@ class _AccountsPageState extends State<AccountsPage> {
                             await AppDatabase.instance.addAccount(
                               platformId: platformId,
                               alias: _aliasCtrl.text,
-                              owner: _ownerCtrl.text,
                               note: _noteCtrl.text,
                             );
                           }
@@ -599,7 +591,7 @@ class _AccountsPageState extends State<AccountsPage> {
                 controller: _searchCtrl,
                 onChanged: (_) => _load(),
                 decoration: appInput(
-                  hint: '搜索账号别名或归属人',
+                  hint: '搜索别名或备注',
                   prefix: const Icon(
                     Icons.search,
                     size: 20,
@@ -618,7 +610,7 @@ class _AccountsPageState extends State<AccountsPage> {
                 ? EmptyState(
                     icon: Icons.badge_outlined,
                     title: '还没有账号',
-                    description: '先把平台账号登记进来（只存别名与归属人，不存密码），分配包裹时才能选择。',
+                    description: '先把平台账号登记进来（只存别名与备注，不存密码），分配包裹时才能选择。',
                     action: FilledButton(
                       onPressed: () => _openAccountDialog(),
                       child: const Text('添加账号'),
@@ -647,7 +639,7 @@ class _AccountsPageState extends State<AccountsPage> {
     final name = active.isEmpty ? '全部平台' : active.first.name;
     final color = active.isEmpty ? AppColors.ink3 : Color(active.first.color);
     return SizedBox(
-      width: 132,
+      width: 150,
       child:
           InputDecorator(
                 decoration: appInput(),
@@ -789,37 +781,34 @@ class _AccountsPageState extends State<AccountsPage> {
     showToast(context, '账号已删除');
   }
 
-  /// 账号卡片：左滑出现「编辑 / 删除」，按钮与卡片同高贴合，点击卡片不进入编辑。
+  /// 账号卡片：左滑出现「编辑 / 删除」，动作按钮裁剪在卡片圆角内，点击卡片不进入编辑。
   Widget _buildAccountCard(AccountView view) {
     final color = Color(view.platform.color);
     final disabled = view.account.status != 'active';
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Slidable(
-        key: ValueKey(view.account.id),
+      child: SlideActionCard(
+        slideKey: ValueKey(view.account.id),
         groupTag: 'accounts',
-        endActionPane: ActionPane(
-          motion: const ScrollMotion(),
-          extentRatio: 0.38,
-          children: [
-            SlidableAction(
-              onPressed: (_) => _openAccountDialog(editing: view),
-              backgroundColor: AppColors.brand,
-              foregroundColor: Colors.white,
-              icon: Icons.edit_outlined,
-              label: '编辑',
-              labelStyle: const TextStyle(fontSize: 12),
-            ),
-            SlidableAction(
-              onPressed: (_) => _confirmDeleteAccount(view),
-              backgroundColor: AppColors.danger,
-              foregroundColor: Colors.white,
-              icon: Icons.delete_outline,
-              label: '删除',
-              labelStyle: const TextStyle(fontSize: 12),
-            ),
-          ],
-        ),
+        extentRatio: 0.38,
+        actions: [
+          SlidableAction(
+            onPressed: (_) => _openAccountDialog(editing: view),
+            backgroundColor: AppColors.brand,
+            foregroundColor: Colors.white,
+            icon: Icons.edit_outlined,
+            label: '编辑',
+            labelStyle: const TextStyle(fontSize: 12),
+          ),
+          SlidableAction(
+            onPressed: (_) => _confirmDeleteAccount(view),
+            backgroundColor: AppColors.danger,
+            foregroundColor: Colors.white,
+            icon: Icons.delete_outline,
+            label: '删除',
+            labelStyle: const TextStyle(fontSize: 12),
+          ),
+        ],
         child: AppCard(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           child: Row(
@@ -845,8 +834,6 @@ class _AccountsPageState extends State<AccountsPage> {
                   Text(
                     [
                       view.platform.name,
-                      if (view.account.owner.isNotEmpty)
-                        '归属 ${view.account.owner}',
                       if (view.account.note.isNotEmpty) view.account.note,
                     ].join(' · '),
                     maxLines: 1,

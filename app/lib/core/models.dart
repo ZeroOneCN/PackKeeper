@@ -65,7 +65,7 @@ class ShopPlatform {
   }
 }
 
-/// 平台账号台账：不存密码，只存别名与归属人。
+/// 平台账号台账：不存密码，只存别名与备注。
 class AccountModel {
   const AccountModel({
     required this.id,

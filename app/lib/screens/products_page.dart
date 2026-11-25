@@ -251,34 +251,32 @@ class _ProductsPageState extends State<ProductsPage> {
   }
 
   /// 商品卡片：左滑出现「编辑 / 删除」，按钮与卡片同高贴合，点击卡片不进入编辑。
+  /// 商品卡片：左滑出现「编辑 / 删除」，动作按钮裁剪在卡片圆角内，点击卡片不进入编辑。
   Widget _buildCard(ProductModel product) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Slidable(
-        key: ValueKey(product.id),
+      child: SlideActionCard(
+        slideKey: ValueKey(product.id),
         groupTag: 'products',
-        endActionPane: ActionPane(
-          motion: const ScrollMotion(),
-          extentRatio: 0.38,
-          children: [
-            SlidableAction(
-              onPressed: (_) => _openDialog(editing: product),
-              backgroundColor: AppColors.brand,
-              foregroundColor: Colors.white,
-              icon: Icons.edit_outlined,
-              label: '编辑',
-              labelStyle: const TextStyle(fontSize: 12),
-            ),
-            SlidableAction(
-              onPressed: (_) => _delete(product),
-              backgroundColor: AppColors.danger,
-              foregroundColor: Colors.white,
-              icon: Icons.delete_outline,
-              label: '删除',
-              labelStyle: const TextStyle(fontSize: 12),
-            ),
-          ],
-        ),
+        extentRatio: 0.38,
+        actions: [
+          SlidableAction(
+            onPressed: (_) => _openDialog(editing: product),
+            backgroundColor: AppColors.brand,
+            foregroundColor: Colors.white,
+            icon: Icons.edit_outlined,
+            label: '编辑',
+            labelStyle: const TextStyle(fontSize: 12),
+          ),
+          SlidableAction(
+            onPressed: (_) => _delete(product),
+            backgroundColor: AppColors.danger,
+            foregroundColor: Colors.white,
+            icon: Icons.delete_outline,
+            label: '删除',
+            labelStyle: const TextStyle(fontSize: 12),
+          ),
+        ],
         child: AppCard(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           child: Row(

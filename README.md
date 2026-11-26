@@ -5,7 +5,7 @@
 > 到货扫码 → 待认领池 → 分配平台账号 → 代下单/补单号 → 打包转寄 → 快递费与净利润对账
 
 <p>
-  <img alt="release" src="https://img.shields.io/badge/release-1.0%20(4027)-2E7D32">
+  <img alt="release" src="https://img.shields.io/badge/release-1.0%20(4028)-2E7D32">
   <img alt="platform" src="https://img.shields.io/badge/platform-Android%208.0%2B-3DDC84">
   <img alt="flutter" src="https://img.shields.io/badge/Flutter-3.x-02569B">
   <img alt="storage" src="https://img.shields.io/badge/storage-SQLite%20v5-003B57">
@@ -31,7 +31,7 @@
 
 ## 二、界面预览
 
-> 以下均为真机截图（Android 14，1200×2670），对应构建号 4027。
+> 以下均为真机截图（Android 14，1200×2670），对应构建号 4028。
 
 | 概览 · 快捷操作置顶 | 待认领池 | 订单列表 | 转寄批次 |
 | :---: | :---: | :---: | :---: |
@@ -100,7 +100,14 @@
 - 扫码入库、批量录单、补单号取号：每次有效识别均**震动**反馈。
 - 已在库中的单号再次扫码会弹出状态提示，不会重复入库；同一轮重复扫描也会提示。
 
-### 3.7 关键联动规则
+### 3.7 应用内更新
+
+- 启动后静默检查一次新版本；首页右上角「检查更新」可手动触发，已是最新时给出提示。
+- 发现更新时展示版本号、安装包大小与更新日志；普通更新可稍后处理，命中最低支持版本或服务端标记强制更新时弹窗不可跳过。
+- 安装包下载到应用缓存，按接口返回的 SHA-256 校验后再调起系统安装；下载链接 10 分钟有效，过期会提示重新检查。
+- 更新接口为 `apps.01iot.top` 公开接口，以包名 + versionCode 比较；应用尚未在该平台发布时返回 404，客户端视为最新且启动检查不打扰用户。
+
+### 3.8 关键联动规则
 
 | 规则 | 说明 |
 | --- | --- |
@@ -122,6 +129,7 @@
 | 扫码 | `mobile_scanner` | 连续扫码、单次取号、相机权限降级 |
 | 面单识别 | Google ML Kit（端侧中文 OCR） | 规则提取 + 人工核对，不上云 |
 | PC 报表 | Dart 单文件 HTTP 服务 + 原生前端 | `dart compile exe` 一键打包，浏览器 IndexedDB 持久化 |
+| 应用更新 | `apps.01iot.top` 公开接口 + SHA-256 | 启动静默检查，下载校验后调起系统安装，不上传业务数据 |
 
 数据流：`页面 → AppDatabase 单例 → SQLite`，通过 `dbRevision` 事件通知各页面刷新；备份为单文件 JSON（版本 3），Web 报表导入后只读展示并可导出 CSV。
 
@@ -190,7 +198,7 @@ adb install -r -t build\app\outputs\flutter-apk\app-arm64-v8a-release.apk
 
 - 首次启动自动建库并写入 7 个平台。
 - 覆盖安装保留本地数据；数据库自动迁移。
-- Debug 验证：`flutter build apk --debug --build-number=4027`。
+- Debug 验证：`flutter build apk --debug --build-number=4028`。
 
 ### 6.2 PC 报表
 
@@ -211,7 +219,7 @@ powershell -ExecutionPolicy Bypass -File web_report\build_web.ps1
 
 ## 七、数据与安全
 
-- 全部业务数据保存在手机本地 SQLite，无任何网络请求。
+- 全部业务数据保存在手机本地 SQLite，不上传云端；仅「检查更新」会访问 `apps.01iot.top` 获取版本信息与安装包。
 - 不保存电商平台账号密码，不做自动登录与平台爬虫。
 - 备份通过系统分享保存；导入覆盖前二次确认，导入后平台顺序自动规范。
 - 新增/修改/删除关键数据写入本地审计表，可在 PC 报表「审计」页签查看。
@@ -233,9 +241,14 @@ powershell -ExecutionPolicy Bypass -File web_report\build_web.ps1
 
 ## 九、版本记录
 
-### v1.0（构建号 4027）｜2026-11-26
+### v1.0（构建号 4028）｜2026-11-27
 
-**变更**
+**新增**
+
+- 应用内更新：启动静默检查 + 首页右上角手动检查，展示版本与更新日志，支持强制更新；下载后 SHA-256 校验再调起系统安装。
+- 更新接口对接 `apps.01iot.top` 公开 API（包名 `com.packkeeper.packkeeper` + versionCode），未上架时视为最新。
+
+**变更（4027）**
 
 - 应用 LOGO 按品牌图标系统重绘：白底浅蓝渐变外壳、圆角 22%、蓝色渐变包裹图形；Android 8+ 自适应图标、Web 端图标与 favicon 同步。
 
@@ -247,7 +260,7 @@ powershell -ExecutionPolicy Bypass -File web_report\build_web.ps1
 
 - 移除面单识别的「从相册选择」入口，仅保留拍照识别，避免误用低清相册图片导致识别失败。
 
-**新增**
+**新增（4024）**
 
 - 应用图标与 Web 端品牌图形统一为新版包裹 LOGO，采用主题绿（#0BA85C）；Android 8+ 使用自适应图标。
 - 概览快捷操作置顶（扫码入库 / 面单识别 / 代下单 / 商品库）。

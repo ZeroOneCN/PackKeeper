@@ -4,6 +4,7 @@ import 'package:styled_widget/styled_widget.dart';
 
 import '../core/theme.dart';
 import '../widgets/common.dart';
+import '../widgets/update_dialog.dart';
 import 'accounts_page.dart';
 import 'dashboard_page.dart';
 import 'inbox_page.dart';
@@ -23,6 +24,15 @@ class _HomeShellState extends State<HomeShell> {
 
   /// 上一次在工作概览按返回键的时间，用于双击退出判定。
   DateTime? _lastBackAt;
+
+  @override
+  void initState() {
+    super.initState();
+    // 启动后静默检查一次更新，无更新或网络异常时不打扰用户。
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) checkForUpdates(context, silent: true);
+    });
+  }
 
   /// 处理系统返回键：非工作概览先切回工作概览；工作概览需 2 秒内连按两次退出。
   void _handleBack() {

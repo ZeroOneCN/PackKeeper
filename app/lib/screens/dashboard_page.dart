@@ -7,6 +7,7 @@ import '../core/models.dart';
 import '../core/theme.dart';
 import '../widgets/common.dart';
 import '../widgets/parcel_picker.dart';
+import '../widgets/update_dialog.dart';
 import 'order_form_page.dart';
 import 'products_page.dart';
 import 'backup_sheet.dart';
@@ -268,6 +269,11 @@ class _DashboardPageState extends State<DashboardPage> {
       appBar: AppBar(
         title: const Text('包裹管家'),
         actions: [
+          IconButton(
+            tooltip: '检查更新',
+            onPressed: () => checkForUpdates(context),
+            icon: const Icon(Icons.system_update_alt),
+          ),
           IconButton(
             tooltip: '数据备份',
             onPressed: () => showBackupSheet(context),

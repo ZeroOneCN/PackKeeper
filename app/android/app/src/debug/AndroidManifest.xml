@@ -4,4 +4,6 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- 仅调试包允许明文 HTTP，便于通过 adb reverse 联调本地更新服务 -->
+    <application android:usesCleartextTraffic="true"/>
 </manifest>

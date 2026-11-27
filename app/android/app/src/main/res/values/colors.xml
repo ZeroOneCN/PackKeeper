@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#FFFFFF</color>
+    <!-- 启动窗口背景与首页 Scaffold 背景一致，避免冷启动白屏闪烁 -->
+    <color name="launch_background">#F1F3F6</color>
 </resources>

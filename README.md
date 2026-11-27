@@ -5,7 +5,7 @@
 > 到货扫码 → 待认领池 → 分配平台账号 → 代下单/补单号 → 打包转寄 → 快递费与净利润对账
 
 <p>
-  <img alt="release" src="https://img.shields.io/badge/release-1.0%20(4028)-2E7D32">
+  <img alt="release" src="https://img.shields.io/badge/release-1.0.1%20(4030)-2E7D32">
   <img alt="platform" src="https://img.shields.io/badge/platform-Android%208.0%2B-3DDC84">
   <img alt="flutter" src="https://img.shields.io/badge/Flutter-3.x-02569B">
   <img alt="storage" src="https://img.shields.io/badge/storage-SQLite%20v5-003B57">
@@ -106,7 +106,7 @@
 - 发现更新时展示版本号、安装包大小与更新日志；普通更新可稍后处理，命中最低支持版本或服务端标记强制更新时弹窗不可跳过。
 - 安装包下载到应用缓存，按接口返回的 SHA-256 校验后再调起系统安装；下载链接 10 分钟有效，过期会提示重新检查。
 - 更新接口为 `apps.01iot.top` 公开接口，以包名 + versionCode 比较；应用尚未在该平台发布时返回 404，客户端视为最新且启动检查不打扰用户。
-- 当前 4028 已上传至 `apps.01iot.top` 并设为私有应用（包名 `com.packkeeper.packkeeper`），版本、图标与签名由平台从 APK 自动解析。
+- 当前 1.0.1（4030）已上传至 `apps.01iot.top` 并设为私有应用（包名 `com.packkeeper.packkeeper`），版本、图标与签名由平台从 APK 自动解析。
 
 ### 3.8 关键联动规则
 
@@ -199,7 +199,7 @@ adb install -r -t build\app\outputs\flutter-apk\app-arm64-v8a-release.apk
 
 - 首次启动自动建库并写入 7 个平台。
 - 覆盖安装保留本地数据；数据库自动迁移。
-- Debug 验证：`flutter build apk --debug --build-number=4028`。
+- Debug 验证：`flutter build apk --debug --build-number=4030`。
 
 ### 6.2 PC 报表
 
@@ -242,9 +242,14 @@ powershell -ExecutionPolicy Bypass -File web_report\build_web.ps1
 
 ## 九、版本记录
 
-### v1.0（构建号 4028）｜2026-11-27
+### v1.0.1（构建号 4030）｜2026-11-27
 
-**新增**
+**变更**
+
+- 优化冷启动：启动窗口背景统一为首页底色 `#F1F3F6`，Flutter 引擎窗口使用相同颜色，消除白屏与首帧跳色。
+- Android 12+ 启动画面隐藏系统图标，仅保留与首页一致的底色；深色模式下同样使用浅色启动背景。
+
+**新增（4028）**
 
 - 应用内更新：启动静默检查 + 首页右上角手动检查，展示版本与更新日志，支持强制更新；下载后 SHA-256 校验再调起系统安装。
 - 更新接口对接 `apps.01iot.top` 公开 API（包名 `com.packkeeper.packkeeper` + versionCode），未上架时视为最新。
